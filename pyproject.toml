@@ -1,10 +1,22 @@
 [project]
 name = "pai-browser-use"
 version = "0.0.1"
-description = "pydantic-ai toolset for browser use"
+description = "Pydantic AI Toolsets for browser use"
 authors = [{ name = "Wh1isper", email = "jizhongsheng957@gmail.com" }]
 readme = "README.md"
-keywords = ['python', 'pydantic', 'cdp', 'browser', 'automation', 'scraping', "browser-use", "llm", "ai", "agent"]
+keywords = [
+    'python',
+    'pydantic',
+    'pydantic-ai',
+    'cdp',
+    'browser',
+    'automation',
+    'scraping',
+    "browser-use",
+    'llm',
+    'ai',
+    'agent',
+]
 requires-python = ">=3.11,<4.0"
 classifiers = [
     "Intended Audience :: Developers",
@@ -15,7 +27,11 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-dependencies = ["cdp-use>=1.4.1, < 2.0.0", "pydantic-ai>=1.0.10, <2.0.0"]
+dependencies = [
+    "cdp-use>=1.4.1, < 2.0.0",
+    "httpx>=0.28.1",
+    "pydantic-ai>=1.0.10, <2.0.0",
+]
 
 [project.urls]
 Homepage = "https://wh1isper.github.io/pai-browser-use/"
@@ -24,6 +40,7 @@ Documentation = "https://wh1isper.github.io/pai-browser-use/"
 
 [dependency-groups]
 dev = [
+    "docker>=7.1.0",
     "pytest>=7.2.0",
     "pre-commit>=2.20.0",
     "pytest-asyncio>=0.25.3",
@@ -100,6 +117,9 @@ ignore = [
     "E501",
     # DoNotAssignLambda
     "E731",
+    "S104",
+    "TRY003",
+    "TRY300",
 ]
 
 [tool.ruff.lint.per-file-ignores]
