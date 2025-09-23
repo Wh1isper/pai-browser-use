@@ -7,3 +7,7 @@
 [![License](https://img.shields.io/github/license/wh1isper/pai-browser-use)](https://img.shields.io/github/license/wh1isper/pai-browser-use)
 
 Pydantic AI Toolsets for browser use
+
+WIP
+
+Inspired by [browser-use](https://github.com/browser-use/browser-use), but can be used in [Pydantic AI](https://ai.pydantic.dev/) agents.

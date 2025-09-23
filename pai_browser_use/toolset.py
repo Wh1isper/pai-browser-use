@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Self, TypeVar
+from typing import Any, Generic, Self
 
 import httpx
 from cdp_use.client import CDPClient
 from pydantic_ai import RunContext
 from pydantic_ai.toolsets import PrefixedToolset, ToolsetTool
+from typing_extensions import TypeVar
 
 AgentDepsT = TypeVar("AgentDepsT", default=None, contravariant=True)
 """Keep this for custom context types in the future."""
