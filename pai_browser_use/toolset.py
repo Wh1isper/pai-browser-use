@@ -5,7 +5,7 @@ from typing import Any, Generic, Self
 import httpx
 from cdp_use.client import CDPClient
 from pydantic_ai import RunContext
-from pydantic_ai.toolsets import PrefixedToolset, ToolsetTool
+from pydantic_ai.toolsets import AbstractToolset, ToolsetTool
 from typing_extensions import TypeVar
 
 AgentDepsT = TypeVar("AgentDepsT", default=None, contravariant=True)
@@ -26,9 +26,7 @@ def get_cdp_websocket_url(cdp_url: str) -> str:
     return data["webSocketDebuggerUrl"]
 
 
-class BrowserUseToolset(PrefixedToolset, Generic[AgentDepsT]):
-    prefix = "browser_use_"
-
+class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
     def __init__(self, cdp_url: str) -> None:
         self.cdp_url = cdp_url
         self._cdp_client: CDPClient | None = None
