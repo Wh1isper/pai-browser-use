@@ -15,7 +15,7 @@ from pai_browser_use import BrowserUseToolset
 
 load_dotenv()
 
-MODEL_NAME = os.getenv("MODEL_NAME", "anthropic:claude-sonnet-4-0")
+MODEL_NAME = os.getenv("MODEL_NAME", "anthropic:claude-sonnet-4-5")
 
 
 async def main():
@@ -23,7 +23,7 @@ async def main():
         model=MODEL_NAME,
         system_prompt="You are a helpful assistant.",
         toolsets=[
-            BrowserUseToolset(cdp_url="http://localhost:9222"),  # or a direct ws:// URL
+            BrowserUseToolset(cdp_url="http://localhost:9222/json/version"),  # or a direct ws:// URL
         ],
     )
     result = await agent.run("Take a screenshot of example.com")
