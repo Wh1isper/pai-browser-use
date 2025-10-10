@@ -42,12 +42,24 @@ class BrowserUseTool(ToolsetTool[AgentDepsT]):
 
 
 class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
-    def __init__(self, cdp_url: str) -> None:
+    def __init__(
+        self,
+        cdp_url: str,
+        max_retries: int = 3,
+    ) -> None:
         self.cdp_url = cdp_url
+
         self._cdp_client: CDPClient | None = None
 
         self._browser_session = BrowserSession()
-        self._tools = [build_tool(self._browser_session, tool) for tool in TOOLS]
+        self._tools = [
+            build_tool(
+                self._browser_session,
+                tool,
+                max_retries=max_retries,
+            )
+            for tool in TOOLS
+        ]
 
     @property
     def id(self) -> str | None:
