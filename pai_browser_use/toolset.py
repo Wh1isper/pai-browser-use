@@ -51,7 +51,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
 
         self._cdp_client: CDPClient | None = None
 
-        self._browser_session = BrowserSession()
+        self._browser_session: BrowserSession | None = None
         self._tools = [
             build_tool(
                 self._browser_session,
@@ -73,6 +73,9 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         """
         websocket_url = get_cdp_websocket_url(self.cdp_url)
         self._cdp_client = await CDPClient(websocket_url).__aenter__()
+        self._browser_session = BrowserSession(
+            cdp_client=self._cdp_client,
+        )
         return self
 
     async def __aexit__(self, *args: Any) -> bool | None:
@@ -83,6 +86,8 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         if self._cdp_client:
             await self._cdp_client.__aexit__(*args)
             self._cdp_client = None
+        if self._browser_session:
+            self._browser_session.dispose()
         return None
 
     async def get_tools(self, ctx: RunContext[AgentDepsT]) -> dict[str, BrowserUseTool[AgentDepsT]]:
