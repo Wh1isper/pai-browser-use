@@ -6,8 +6,85 @@
 [![Commit activity](https://img.shields.io/github/commit-activity/m/wh1isper/pai-browser-use)](https://img.shields.io/github/commit-activity/m/wh1isper/pai-browser-use)
 [![License](https://img.shields.io/github/license/wh1isper/pai-browser-use)](https://img.shields.io/github/license/wh1isper/pai-browser-use)
 
-Pydantic AI Toolsets for browser use
+**🚧 Work in Progress**
 
-WIP
+Pydantic AI Toolsets for browser automation using Chrome DevTools Protocol (CDP).
 
-Inspired by [browser-use](https://github.com/browser-use/browser-use), but can be used in [Pydantic AI](https://ai.pydantic.dev/) agents.
+Inspired by [browser-use](https://github.com/browser-use/browser-use), designed for [Pydantic AI](https://ai.pydantic.dev/) agents.
+
+## Features
+
+- **Browser Automation Tools**: Navigation, state inspection, interaction, and element queries
+- **Multi-Modal Screenshots**: Automatic image splitting for long pages with ToolReturn support
+- **Type-Safe CDP Integration**: Direct access to cdp-use API with full type hints
+- **Fully Tested**: Comprehensive test suite with Docker-based Chrome container
+
+## Quick Start
+
+### Prerequisites
+
+Start a Chrome instance with CDP enabled:
+
+```bash
+# Option 1: Using Chrome directly
+google-chrome --remote-debugging-port=9222
+
+# Option 2: Using Docker container
+./dev/start-browser-container.sh
+```
+
+### Basic Usage
+
+```python
+import os
+from pydantic_ai import Agent
+from pai_browser_use import BrowserUseToolset
+
+agent = Agent(
+    model="anthropic:claude-sonnet-4-5",
+    system_prompt="You are a helpful assistant.",
+    toolsets=[
+        BrowserUseToolset(cdp_url="http://localhost:9222/json/version"),
+    ],
+)
+
+result = await agent.run("Find the number of stars of the wh1isper/pai-browser-use repo")
+print(result.output)
+```
+
+See [examples/agent.py](examples/agent.py) for a complete example.
+
+## Available Tools
+
+**Navigation** (4 tools)
+
+- `navigate_to_url`, `go_back`, `go_forward`, `reload_page`
+
+**State Inspection** (5 tools)
+
+- `get_page_info`, `get_page_content`, `take_screenshot`, `take_element_screenshot`, `get_viewport_info`
+
+**Interaction** (4 tools)
+
+- `click_element`, `type_text`, `execute_javascript`, `scroll_to`
+
+**Query** (3 tools)
+
+- `find_elements`, `get_element_text`, `get_element_attributes`
+
+## Development
+
+```bash
+# Install dependencies
+uv sync
+
+# Run tests
+pytest tests/
+
+# Run example
+python examples/agent.py
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.

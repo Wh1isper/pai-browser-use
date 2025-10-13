@@ -26,7 +26,7 @@ async def main():
             BrowserUseToolset(cdp_url="http://localhost:9222/json/version"),  # or a direct ws:// URL
         ],
     )
-    result = await agent.run("Take a screenshot of example.com")
+    result = await agent.run("Find the number of stars of the wh1isper/pai-browser-use repo")
     print(result.output)
 
 
