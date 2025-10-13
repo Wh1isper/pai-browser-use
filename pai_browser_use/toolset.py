@@ -11,7 +11,8 @@ from pydantic_ai.toolsets import AbstractToolset, ToolsetTool
 from typing_extensions import TypeVar
 
 from pai_browser_use._session import BrowserSession
-from pai_browser_use._tools import TOOLS, build_tool
+from pai_browser_use._tools import build_tool
+from pai_browser_use.tools import ALL_TOOLS
 
 AgentDepsT = TypeVar("AgentDepsT", default=None, contravariant=True)
 """Keep this for custom context types in the future."""
@@ -48,17 +49,18 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         max_retries: int = 3,
     ) -> None:
         self.cdp_url = cdp_url
+        self.max_retries = max_retries
 
         self._cdp_client: CDPClient | None = None
 
-        self._browser_session = BrowserSession()
+        self._browser_session: BrowserSession | None = None
         self._tools = [
             build_tool(
                 self._browser_session,
                 tool,
                 max_retries=max_retries,
             )
-            for tool in TOOLS
+            for tool in ALL_TOOLS
         ]
 
     @property
@@ -69,10 +71,54 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
     async def __aenter__(self) -> Self:
         """Enter the toolset context.
 
-        This sets up the CDP client connection.
+        This sets up the CDP client connection and creates or attaches to a page.
         """
         websocket_url = get_cdp_websocket_url(self.cdp_url)
         self._cdp_client = await CDPClient(websocket_url).__aenter__()
+
+        # Get existing targets
+        targets_response = await self._cdp_client.send.Target.getTargets()
+        target_infos = targets_response.get("targetInfos", [])
+
+        # Find existing page target or create new one
+        page_target = None
+        for target_info in target_infos:
+            if target_info.get("type") == "page":
+                page_target = target_info
+                break
+
+        if page_target:
+            # Reuse existing page
+            target_id = page_target["targetId"]
+        else:
+            # Create a new page target
+            create_response = await self._cdp_client.send.Target.createTarget(params={"url": "about:blank"})
+            target_id = create_response["targetId"]
+
+        # Attach to the target to get a session
+        attach_response = await self._cdp_client.send.Target.attachToTarget(
+            params={"targetId": target_id, "flatten": True}
+        )
+        session_id = attach_response["sessionId"]
+
+        if session_id is None:
+            raise ValueError("Failed to get session ID from target attachment")
+
+        self._browser_session = BrowserSession(
+            cdp_client=self._cdp_client,
+            page=session_id,  # Store session_id as page reference
+        )
+
+        # Rebuild tools with actual session
+        self._tools = [
+            build_tool(
+                self._browser_session,
+                tool,
+                max_retries=self.max_retries,
+            )
+            for tool in ALL_TOOLS
+        ]
+
         return self
 
     async def __aexit__(self, *args: Any) -> bool | None:
@@ -83,6 +129,8 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         if self._cdp_client:
             await self._cdp_client.__aexit__(*args)
             self._cdp_client = None
+        if self._browser_session:
+            self._browser_session.dispose()
         return None
 
     async def get_tools(self, ctx: RunContext[AgentDepsT]) -> dict[str, BrowserUseTool[AgentDepsT]]:
@@ -103,7 +151,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         name: str,
         tool_args: dict[str, Any],
         ctx: RunContext[AgentDepsT],
-        tool: ToolsetTool[AgentDepsT],
+        tool: BrowserUseTool[AgentDepsT],
     ) -> Any:
         """Call a tool with the given arguments.
 
