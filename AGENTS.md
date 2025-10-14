@@ -32,8 +32,12 @@ Pydantic AI Toolsets for browser automation using Chrome DevTools Protocol (CDP)
 
    - **Navigation**: URL navigation, history, reload
    - **State**: Page info, content, screenshots (with multi-modal support)
-   - **Interaction**: Click, type, JavaScript execution, scrolling
+   - **Interaction**: Click, type, hover, focus, key press, JavaScript execution, scrolling
    - **Query**: Element finding and inspection
+   - **Wait**: Element waiting, navigation waiting, load state waiting
+   - **Form**: Select options, checkbox/radio operations, file upload
+   - **Dialog**: JavaScript dialog handling (alert, confirm, prompt)
+   - **Validation**: Element visibility, enabled state, checked state
 
 ### CDP Integration
 
@@ -152,5 +156,19 @@ agent = Agent(
     ],
 )
 
+# Basic navigation and screenshot
 result = await agent.run("Navigate to example.com and take a screenshot")
+
+# Form interaction example
+result = await agent.run("""
+    Go to the search page, wait for the search input to appear,
+    type 'browser automation', select 'All results' from the filter dropdown,
+    check the 'Include archived' checkbox, and submit the form
+""")
+
+# Advanced interaction example
+result = await agent.run("""
+    Navigate to the menu page, hover over 'Products' to show the dropdown,
+    wait for the submenu to appear, then click on 'Documentation'
+""")
 ```

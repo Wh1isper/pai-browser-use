@@ -66,24 +66,6 @@ print(result.output)
 
 See [examples/agent.py](examples/agent.py) for a complete example.
 
-## Available Tools
-
-**Navigation** (4 tools)
-
-- `navigate_to_url`, `go_back`, `go_forward`, `reload_page`
-
-**State Inspection** (5 tools)
-
-- `get_page_info`, `get_page_content`, `take_screenshot`, `take_element_screenshot`, `get_viewport_info`
-
-**Interaction** (4 tools)
-
-- `click_element`, `type_text`, `execute_javascript`, `scroll_to`
-
-**Query** (3 tools)
-
-- `find_elements`, `get_element_text`, `get_element_attributes`
-
 ## Logging
 
 Use `PAI_BROWSER_USE_LOG_LEVEL` environment variable to set logging level. The default is `ERROR`. Set to `DEBUG` for more verbose logging.

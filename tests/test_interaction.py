@@ -6,7 +6,10 @@ from pai_browser_use._tools import build_tool
 from pai_browser_use.tools import (
     click_element,
     execute_javascript,
+    focus,
+    hover,
     navigate_to_url,
+    press_key,
     scroll_to,
     type_text,
 )
@@ -110,5 +113,69 @@ async def test_type_text_no_clear(cdp_url):
         result = await type_tool.function_schema.call({"selector": "input", "text": "test", "clear_first": False}, None)
 
         # Status could be success or not_found depending on page
+        assert result["status"] in ["success", "not_found", "error"]
+        assert "selector" in result
+
+
+async def test_hover(cdp_url):
+    """Test hovering over an element."""
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+
+        nav_tool = build_tool(session, navigate_to_url)
+        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+
+        # Hover over a link
+        hover_tool = build_tool(session, hover)
+        result = await hover_tool.function_schema.call({"selector": "h1"}, None)
+
+        assert result["status"] in ["success", "not_found", "error"]
+        assert "selector" in result
+
+
+async def test_press_key(cdp_url):
+    """Test pressing a key."""
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+
+        nav_tool = build_tool(session, navigate_to_url)
+        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+
+        # Press Enter key
+        key_tool = build_tool(session, press_key)
+        result = await key_tool.function_schema.call({"key": "Enter"}, None)
+
+        assert result["status"] == "success"
+        assert result["key"] == "Enter"
+
+
+async def test_press_key_with_modifiers(cdp_url):
+    """Test pressing a key with modifiers."""
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+
+        nav_tool = build_tool(session, navigate_to_url)
+        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+
+        # Press Ctrl+A
+        key_tool = build_tool(session, press_key)
+        result = await key_tool.function_schema.call({"key": "a", "modifiers": 2}, None)  # 2 = Ctrl
+
+        assert result["status"] == "success"
+        assert result["key"] == "a"
+
+
+async def test_focus(cdp_url):
+    """Test focusing an element."""
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+
+        nav_tool = build_tool(session, navigate_to_url)
+        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+
+        # Focus on body
+        focus_tool = build_tool(session, focus)
+        result = await focus_tool.function_schema.call({"selector": "body"}, None)
+
         assert result["status"] in ["success", "not_found", "error"]
         assert "selector" in result

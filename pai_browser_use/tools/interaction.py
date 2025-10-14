@@ -6,7 +6,14 @@ from typing import Any
 
 from pai_browser_use._logger import logger
 from pai_browser_use._tools import BrowserSession, get_browser_session
-from pai_browser_use.tools._types import ClickResult, ExecuteScriptResult, TypeTextResult
+from pai_browser_use.tools._types import (
+    ClickResult,
+    ExecuteScriptResult,
+    FocusResult,
+    HoverResult,
+    KeyPressResult,
+    TypeTextResult,
+)
 
 
 async def click_element(selector: str) -> dict[str, Any]:
@@ -262,6 +269,215 @@ async def scroll_to(x: int = 0, y: int = 0) -> dict[str, Any]:
     """
     logger.info(f"Scrolling page to position: x={x}, y={y}")
     return await execute_javascript(f"window.scrollTo({x}, {y})")
+
+
+async def hover(selector: str) -> dict[str, Any]:
+    """Hover mouse over an element.
+
+    Args:
+        selector: CSS selector for the element
+
+    Returns:
+        HoverResult dictionary
+    """
+    logger.info(f"Hovering over element: {selector}")
+    session = get_browser_session()
+
+    try:
+        # Enable DOM
+        await session.cdp_client.send.DOM.enable(session_id=session.page)
+
+        # Get document and find element
+        doc = await session.cdp_client.send.DOM.getDocument(session_id=session.page)
+        root_node_id = doc["root"]["nodeId"]
+
+        result = await session.cdp_client.send.DOM.querySelector(
+            params={
+                "nodeId": root_node_id,
+                "selector": selector,
+            },
+            session_id=session.page,
+        )
+
+        node_id = result.get("nodeId")
+        if not node_id or node_id == 0:
+            logger.warning(f"Element not found: {selector}")
+            return HoverResult(
+                status="not_found",
+                selector=selector,
+                error_message=f"Element not found: {selector}",
+            ).model_dump()
+
+        # Get box model
+        box_result = await session.cdp_client.send.DOM.getBoxModel(params={"nodeId": node_id}, session_id=session.page)
+        border = box_result["model"]["border"]
+
+        # Calculate center point
+        x = (border[0] + border[4]) / 2
+        y = (border[1] + border[5]) / 2
+
+        element_info = {
+            "x": x,
+            "y": y,
+            "width": border[4] - border[0],
+            "height": border[5] - border[1],
+        }
+        logger.info(f"Moving mouse to position: x={x:.1f}, y={y:.1f}")
+
+        # Move mouse to element
+        await session.cdp_client.send.Input.dispatchMouseEvent(
+            params={
+                "type": "mouseMoved",
+                "x": x,
+                "y": y,
+            },
+            session_id=session.page,
+        )
+
+        logger.info(f"Successfully hovered over element: {selector}")
+        return HoverResult(
+            status="success",
+            selector=selector,
+            element_info=element_info,
+        ).model_dump()
+
+    except Exception as e:  # pragma: no cover
+        logger.error(f"Failed to hover over element {selector}: {e}")
+        return HoverResult(
+            status="error",
+            selector=selector,
+            error_message=str(e),
+        ).model_dump()
+
+
+async def press_key(key: str, modifiers: int = 0) -> dict[str, Any]:
+    """Press a keyboard key.
+
+    Args:
+        key: Key to press (e.g., "Enter", "Escape", "Tab", "a", "A")
+        modifiers: Bit field for modifier keys:
+            - 1: Alt
+            - 2: Ctrl
+            - 4: Meta/Command
+            - 8: Shift
+
+    Returns:
+        KeyPressResult dictionary
+    """
+    logger.info(f"Pressing key: {key} (modifiers: {modifiers})")
+    session = get_browser_session()
+
+    try:
+        # Map common key names to CDP key codes
+        key_map = {
+            "Enter": "Enter",
+            "Escape": "Escape",
+            "Tab": "Tab",
+            "Backspace": "Backspace",
+            "Delete": "Delete",
+            "ArrowUp": "ArrowUp",
+            "ArrowDown": "ArrowDown",
+            "ArrowLeft": "ArrowLeft",
+            "ArrowRight": "ArrowRight",
+            "Home": "Home",
+            "End": "End",
+            "PageUp": "PageUp",
+            "PageDown": "PageDown",
+        }
+
+        # Get the actual key code
+        key_code = key_map.get(key, key)
+
+        # Key down
+        await session.cdp_client.send.Input.dispatchKeyEvent(
+            params={
+                "type": "keyDown",
+                "key": key_code,
+                "code": f"Key{key.upper()}" if len(key) == 1 else key_code,
+                "modifiers": modifiers,
+            },
+            session_id=session.page,
+        )
+
+        # Key up
+        await session.cdp_client.send.Input.dispatchKeyEvent(
+            params={
+                "type": "keyUp",
+                "key": key_code,
+                "code": f"Key{key.upper()}" if len(key) == 1 else key_code,
+                "modifiers": modifiers,
+            },
+            session_id=session.page,
+        )
+
+        logger.info(f"Successfully pressed key: {key}")
+        return KeyPressResult(
+            status="success",
+            key=key,
+        ).model_dump()
+
+    except Exception as e:  # pragma: no cover
+        logger.error(f"Failed to press key {key}: {e}")
+        return KeyPressResult(
+            status="error",
+            key=key,
+            error_message=str(e),
+        ).model_dump()
+
+
+async def focus(selector: str) -> dict[str, Any]:
+    """Focus on an element.
+
+    Args:
+        selector: CSS selector for the element
+
+    Returns:
+        FocusResult dictionary
+    """
+    logger.info(f"Focusing element: {selector}")
+    session = get_browser_session()
+
+    try:
+        # Enable DOM
+        await session.cdp_client.send.DOM.enable(session_id=session.page)
+
+        # Find element
+        doc = await session.cdp_client.send.DOM.getDocument(session_id=session.page)
+        root_node_id = doc["root"]["nodeId"]
+
+        result = await session.cdp_client.send.DOM.querySelector(
+            params={
+                "nodeId": root_node_id,
+                "selector": selector,
+            },
+            session_id=session.page,
+        )
+
+        node_id = result.get("nodeId")
+        if not node_id or node_id == 0:
+            logger.warning(f"Element not found: {selector}")
+            return FocusResult(
+                status="not_found",
+                selector=selector,
+                error_message=f"Element not found: {selector}",
+            ).model_dump()
+
+        # Focus using CDP
+        await session.cdp_client.send.DOM.focus(params={"nodeId": node_id}, session_id=session.page)
+
+        logger.info(f"Successfully focused element: {selector}")
+        return FocusResult(
+            status="success",
+            selector=selector,
+        ).model_dump()
+
+    except Exception as e:  # pragma: no cover
+        logger.error(f"Failed to focus element {selector}: {e}")
+        return FocusResult(
+            status="error",
+            selector=selector,
+            error_message=str(e),
+        ).model_dump()
 
 
 async def _is_mac(session: BrowserSession) -> bool:

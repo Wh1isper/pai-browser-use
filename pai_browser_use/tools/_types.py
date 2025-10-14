@@ -7,7 +7,6 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 
-# Navigation results
 class NavigationResult(BaseModel):
     """Navigation operation result."""
 
@@ -94,4 +93,88 @@ class FindElementsResult(BaseModel):
     selector: str
     count: int
     elements: list[ElementInfo] = []
+    error_message: str | None = None
+
+
+class WaitResult(BaseModel):
+    """Wait operation result."""
+
+    status: Literal["success", "timeout", "error"]
+    wait_type: str
+    selector: str | None = None
+    error_message: str | None = None
+    elapsed_time: float | None = None
+
+
+class SelectOptionResult(BaseModel):
+    """Select option operation result."""
+
+    status: Literal["success", "error", "not_found"]
+    selector: str
+    value: str | None = None
+    index: int | None = None
+    label: str | None = None
+    error_message: str | None = None
+
+
+class CheckboxResult(BaseModel):
+    """Checkbox operation result."""
+
+    status: Literal["success", "error", "not_found"]
+    selector: str
+    checked: bool
+    error_message: str | None = None
+
+
+class FileUploadResult(BaseModel):
+    """File upload operation result."""
+
+    status: Literal["success", "error", "not_found"]
+    selector: str
+    files: list[str]
+    error_message: str | None = None
+
+
+class DialogResult(BaseModel):
+    """Dialog handling result."""
+
+    status: Literal["success", "error", "no_dialog"]
+    dialog_type: str | None = None
+    message: str | None = None
+    accepted: bool | None = None
+    prompt_text: str | None = None
+    error_message: str | None = None
+
+
+class HoverResult(BaseModel):
+    """Hover operation result."""
+
+    status: Literal["success", "error", "not_found"]
+    selector: str
+    element_info: dict[str, Any] | None = None
+    error_message: str | None = None
+
+
+class KeyPressResult(BaseModel):
+    """Key press operation result."""
+
+    status: Literal["success", "error"]
+    key: str
+    error_message: str | None = None
+
+
+class FocusResult(BaseModel):
+    """Focus operation result."""
+
+    status: Literal["success", "error", "not_found"]
+    selector: str
+    error_message: str | None = None
+
+
+class ValidationResult(BaseModel):
+    """Element validation result."""
+
+    status: Literal["success", "error", "not_found"]
+    selector: str
+    result: bool | None = None
     error_message: str | None = None
