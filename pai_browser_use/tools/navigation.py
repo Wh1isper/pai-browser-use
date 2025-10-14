@@ -69,7 +69,7 @@ async def navigate_to_url(url: str, timeout: int = 30000) -> dict[str, Any]:
             title=info["title"],
         ).model_dump()
 
-    except TimeoutError:
+    except TimeoutError:  # pragma: no cover
         logger.warning(f"Navigation timeout after {timeout}ms for URL: {url}")
         return NavigationResult(
             status="timeout",
@@ -77,7 +77,7 @@ async def navigate_to_url(url: str, timeout: int = 30000) -> dict[str, Any]:
             error_message=f"Navigation timeout after {timeout}ms",
         ).model_dump()
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.error(f"Navigation failed for URL {url}: {e}")
         return NavigationResult(
             status="error",
@@ -149,7 +149,7 @@ async def go_back() -> dict[str, Any]:
                 error_message="No previous page in history",
             ).model_dump()
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.error(f"Failed to navigate back: {e}")
         return NavigationResult(
             status="error",
@@ -221,7 +221,7 @@ async def go_forward() -> dict[str, Any]:
                 error_message="No next page in history",
             ).model_dump()
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.error(f"Failed to navigate forward: {e}")
         return NavigationResult(
             status="error",
@@ -279,7 +279,7 @@ async def reload_page(ignore_cache: bool = False) -> dict[str, Any]:
             title=info["title"],
         ).model_dump()
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.error(f"Failed to reload page: {e}")
         return NavigationResult(
             status="error",

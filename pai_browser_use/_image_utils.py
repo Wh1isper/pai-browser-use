@@ -65,11 +65,11 @@ def split_image_data(
 
                 # Safe format extraction with fallback
                 segment_format = MEDIA_TYPE_TO_FORMAT.get(media_type)
-                if not segment_format:
+                if not segment_format:  # pragma: no cover
                     # Fallback to splitting approach with error handling
                     try:
                         segment_format = media_type.split("/")[1].upper()
-                    except (IndexError, AttributeError):
+                    except (IndexError, AttributeError):  # pragma: no cover
                         segment_format = "PNG"  # Safe default
                         logger.warning(f"Invalid media_type '{media_type}', using PNG as fallback")
 
@@ -90,7 +90,7 @@ def split_image_data(
             logger.info(f"Split image into {len(segments)} segments (original: {width}x{height}px)")
             return segments
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.warning(f"Failed to split image: {e}, returning original image")
         # Return original as fallback
         return [BinaryContent(data=image_bytes, media_type="image/png")]

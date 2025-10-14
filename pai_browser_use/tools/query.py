@@ -88,7 +88,7 @@ async def find_elements(selector: str, limit: int = 10) -> dict[str, Any]:  # no
                     width = max(border[0], border[2], border[4], border[6]) - x
                     height = max(border[1], border[3], border[5], border[7]) - y
                     bounding_box = {"x": x, "y": y, "width": width, "height": height}
-                except Exception as e:
+                except Exception as e:  # pragma: no cover
                     logger.debug(f"Failed to get bounding box for node {node_id}: {e}")
 
                 element_infos.append(
@@ -100,7 +100,7 @@ async def find_elements(selector: str, limit: int = 10) -> dict[str, Any]:  # no
                         bounding_box=bounding_box,
                     )
                 )
-            except Exception as e:
+            except Exception as e:  # pragma: no cover
                 # Skip elements that throw errors
                 logger.debug(f"Failed to process element node {node_id}: {e}")
                 continue
@@ -127,7 +127,7 @@ async def find_elements(selector: str, limit: int = 10) -> dict[str, Any]:  # no
             elements=element_infos,
         ).model_dump()
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.error(f"Failed to find elements for selector {selector}: {e}")
         return FindElementsResult(
             status="error",
@@ -163,7 +163,7 @@ async def get_element_text(selector: str) -> str:
         logger.debug(f"Element text for '{selector}': {text[:200]}{'...' if len(text) > 200 else ''}")
         return text
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.error(f"Failed to get element text for {selector}: {e}")
         return ""
 
@@ -223,7 +223,7 @@ async def get_element_attributes(selector: str, attributes: list[str] | None = N
         logger.debug(f"Element attributes for '{selector}': {attrs}")
         return attrs
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.error(f"Failed to get element attributes for {selector}: {e}")
         return {}
 

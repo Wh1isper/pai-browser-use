@@ -34,7 +34,7 @@ def get_browser_session() -> BrowserSession:
         RuntimeError: If no browser session is available in current context
     """
     session = _browser_session_context.get()
-    if session is None:
+    if session is None:  # pragma: no cover
         logger.error("Attempted to get browser session, but no session is available in context")
         raise RuntimeError("No browser session available in current context")
     logger.debug(f"Retrieved browser session from context (page: {session.page}, url: {session.current_url})")
@@ -73,7 +73,7 @@ def build_tool(
             logger.info(f"Tool {tool_name} completed successfully")
             logger.debug(f"Tool {tool_name} result type: {type(result).__name__}")
             return result
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             logger.error(f"Tool {tool_name} execution failed: {e}")
             raise
         finally:

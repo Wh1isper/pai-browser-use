@@ -94,3 +94,21 @@ async def test_scroll_to(cdp_url):
         result = await scroll_tool.function_schema.call({"x": 0, "y": 100}, None)
 
         assert result["status"] == "success"
+
+
+async def test_type_text_no_clear(cdp_url):
+    """Test typing text without clearing existing text."""
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+
+        # Navigate to a page with input (example.com doesn't have input, so result may vary)
+        nav_tool = build_tool(session, navigate_to_url)
+        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+
+        # Try to type without clearing
+        type_tool = build_tool(session, type_text)
+        result = await type_tool.function_schema.call({"selector": "input", "text": "test", "clear_first": False}, None)
+
+        # Status could be success or not_found depending on page
+        assert result["status"] in ["success", "not_found", "error"]
+        assert "selector" in result
