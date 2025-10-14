@@ -10,7 +10,7 @@ from pai_browser_use._tools import get_browser_session
 from pai_browser_use.tools._types import ElementInfo, FindElementsResult
 
 
-async def find_elements(selector: str, limit: int = 10) -> dict[str, Any]:
+async def find_elements(selector: str, limit: int = 10) -> dict[str, Any]:  # noqa: C901
     """Find elements matching a CSS selector.
 
     Args:
@@ -20,17 +20,21 @@ async def find_elements(selector: str, limit: int = 10) -> dict[str, Any]:
     Returns:
         FindElementsResult dictionary with list of matching elements
     """
+    logger.info(f"Finding elements with selector: {selector} (limit: {limit})")
     session = get_browser_session()
 
     try:
         # Enable DOM
+        logger.info("Enabling DOM domain...")
         await session.cdp_client.send.DOM.enable(session_id=session.page)
 
         # Get document
+        logger.info("Getting document root...")
         doc = await session.cdp_client.send.DOM.getDocument(session_id=session.page)
         root_node_id = doc["root"]["nodeId"]
 
         # Query all matching elements
+        logger.info(f"Querying all elements matching: {selector}")
         result = await session.cdp_client.send.DOM.querySelectorAll(
             params={
                 "nodeId": root_node_id,
@@ -40,9 +44,11 @@ async def find_elements(selector: str, limit: int = 10) -> dict[str, Any]:
         )
 
         node_ids = result.get("nodeIds", [])[:limit]
+        logger.info(f"Found {len(result.get('nodeIds', []))} elements, processing first {len(node_ids)}")
 
         # Extract info from each element
         element_infos = []
+        logger.info("Extracting element information...")
         for node_id in node_ids:
             try:
                 # Get node attributes and info
@@ -99,6 +105,21 @@ async def find_elements(selector: str, limit: int = 10) -> dict[str, Any]:
                 logger.debug(f"Failed to process element node {node_id}: {e}")
                 continue
 
+        logger.info(f"Successfully extracted information for {len(element_infos)} elements")
+
+        # Debug: Show detailed element information
+        if element_infos:
+            logger.debug(f"Element details for selector '{selector}':")
+            for idx, elem in enumerate(element_infos[:3]):  # Show first 3 elements
+                logger.debug(f"  [{idx}] Tag: {elem.tag_name}, Text: {elem.text[:100] if elem.text else 'N/A'}")
+                logger.debug(f"      Attributes: {elem.attributes}")
+                if elem.bounding_box:
+                    logger.debug(
+                        f"      Position: x={elem.bounding_box['x']}, y={elem.bounding_box['y']}, w={elem.bounding_box['width']}, h={elem.bounding_box['height']}"
+                    )
+            if len(element_infos) > 3:
+                logger.debug(f"  ... and {len(element_infos) - 3} more elements")
+
         return FindElementsResult(
             status="success",
             selector=selector,
@@ -107,6 +128,7 @@ async def find_elements(selector: str, limit: int = 10) -> dict[str, Any]:
         ).model_dump()
 
     except Exception as e:
+        logger.error(f"Failed to find elements for selector {selector}: {e}")
         return FindElementsResult(
             status="error",
             selector=selector,
@@ -124,6 +146,7 @@ async def get_element_text(selector: str) -> str:
     Returns:
         Text content or empty string if not found
     """
+    logger.info(f"Getting text content for element: {selector}")
     session = get_browser_session()
 
     try:
@@ -135,9 +158,13 @@ async def get_element_text(selector: str) -> str:
             session_id=session.page,
         )
 
-        return result["result"].get("value", "")
+        text = result["result"].get("value", "")
+        logger.info(f"Retrieved text content ({len(text)} characters) for {selector}")
+        logger.debug(f"Element text for '{selector}': {text[:200]}{'...' if len(text) > 200 else ''}")
+        return text
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to get element text for {selector}: {e}")
         return ""
 
 
@@ -151,6 +178,7 @@ async def get_element_attributes(selector: str, attributes: list[str] | None = N
     Returns:
         Dictionary of attribute name-value pairs
     """
+    logger.info(f"Getting attributes for element: {selector}")
     session = get_browser_session()
 
     try:
@@ -190,9 +218,13 @@ async def get_element_attributes(selector: str, attributes: list[str] | None = N
             session_id=session.page,
         )
 
-        return result["result"].get("value", {})
+        attrs = result["result"].get("value", {})
+        logger.info(f"Retrieved {len(attrs)} attributes for {selector}")
+        logger.debug(f"Element attributes for '{selector}': {attrs}")
+        return attrs
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to get element attributes for {selector}: {e}")
         return {}
 
 

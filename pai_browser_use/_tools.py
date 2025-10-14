@@ -11,6 +11,7 @@ from typing import Any, TypeAlias
 from pydantic_ai import Tool
 from typing_extensions import ParamSpec
 
+from pai_browser_use._logger import logger
 from pai_browser_use._session import BrowserSession
 
 ToolParams = ParamSpec("ToolParams", default=...)
@@ -34,7 +35,9 @@ def get_browser_session() -> BrowserSession:
     """
     session = _browser_session_context.get()
     if session is None:
+        logger.error("Attempted to get browser session, but no session is available in context")
         raise RuntimeError("No browser session available in current context")
+    logger.debug(f"Retrieved browser session from context (page: {session.page}, url: {session.current_url})")
     return session
 
 
@@ -56,13 +59,23 @@ def build_tool(
     Returns:
         Configured Tool instance
     """
+    tool_name = func.__name__
+    logger.info(f"Building tool: {tool_name} (max_retries: {max_retries})")
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
+        logger.info(f"Executing tool: {tool_name}")
+        logger.debug(f"Tool {tool_name} called with args: {args}, kwargs: {kwargs}")
         # Set current context's browser_session
         token = _browser_session_context.set(browser_session)
         try:
-            return await func(*args, **kwargs)
+            result = await func(*args, **kwargs)
+            logger.info(f"Tool {tool_name} completed successfully")
+            logger.debug(f"Tool {tool_name} result type: {type(result).__name__}")
+            return result
+        except Exception as e:
+            logger.error(f"Tool {tool_name} execution failed: {e}")
+            raise
         finally:
             # Restore context
             _browser_session_context.reset(token)

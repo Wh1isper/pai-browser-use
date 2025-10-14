@@ -10,6 +10,7 @@ from typing import Any
 from pydantic_ai.messages import ToolReturn
 
 from pai_browser_use._image_utils import ImageMediaType, split_image_data
+from pai_browser_use._logger import logger
 from pai_browser_use._tools import get_browser_session
 from pai_browser_use.tools._types import (
     ElementScreenshotResult,
@@ -24,6 +25,7 @@ async def get_page_info() -> dict[str, Any]:
     Returns:
         PageInfo dictionary with url, title, ready_state, and viewport
     """
+    logger.info("Fetching current page information")
     session = get_browser_session()
 
     # Execute JS to get page info
@@ -42,6 +44,9 @@ async def get_page_info() -> dict[str, Any]:
     )
 
     info = json.loads(result["result"]["value"])
+    logger.info(f"Page info retrieved - URL: {info['url']}, Title: {info['title']}, ReadyState: {info['readyState']}")
+    logger.debug(f"Full page info: {info}")
+    logger.debug(f"Viewport: {session.viewport}")
 
     # Update session state
     session.current_url = info["url"]
@@ -64,10 +69,12 @@ async def get_page_content(content_format: str = "text") -> str:
     Returns:
         Page content as string
     """
+    logger.info(f"Fetching page content in format: {content_format}")
     session = get_browser_session()
 
     if content_format == "html":
         # Get HTML content
+        logger.info("Extracting HTML content...")
         result = await session.cdp_client.send.Runtime.evaluate(
             params={
                 "expression": "document.documentElement.outerHTML",
@@ -75,8 +82,12 @@ async def get_page_content(content_format: str = "text") -> str:
             },
             session_id=session.page,
         )
-        return result["result"]["value"]
+        content = result["result"]["value"]
+        logger.info(f"Retrieved HTML content ({len(content)} characters)")
+        logger.debug(f"HTML content preview (first 500 chars): {content[:500]}...")
+        return content
     else:  # text
+        logger.info("Extracting text content...")
         result = await session.cdp_client.send.Runtime.evaluate(
             params={
                 "expression": "document.body.innerText",
@@ -84,7 +95,10 @@ async def get_page_content(content_format: str = "text") -> str:
             },
             session_id=session.page,
         )
-        return result["result"]["value"]
+        content = result["result"]["value"]
+        logger.info(f"Retrieved text content ({len(content)} characters)")
+        logger.debug(f"Text content preview (first 500 chars): {content[:500]}...")
+        return content
 
 
 async def take_screenshot(
@@ -104,6 +118,7 @@ async def take_screenshot(
         - return_value: ScreenshotResult with metadata
         - content: List of BinaryContent (image segments)
     """
+    logger.info(f"Taking screenshot (full_page: {full_page}, format: {img_format})")
     session = get_browser_session()
 
     try:
@@ -115,23 +130,28 @@ async def take_screenshot(
         if full_page:
             params["captureBeyondViewport"] = True
 
+        logger.info("Capturing screenshot via CDP...")
         result = await session.cdp_client.send.Page.captureScreenshot(params=params, session_id=session.page)
         screenshot_data = result["data"]
 
         # Convert base64 to bytes
         image_bytes = base64.b64decode(screenshot_data)
+        logger.info(f"Screenshot captured ({len(image_bytes)} bytes)")
 
         # Split image if needed
+        logger.info("Splitting image into segments...")
         segments = split_image_data(
             image_bytes=image_bytes,
             max_height=4096,
             overlap=50,
             media_type=img_format,
         )
+        logger.info(f"Image split into {len(segments)} segments")
 
         # Limit to 20 segments
         truncated = len(segments) > 20
         if truncated:
+            logger.warning(f"Screenshot segments truncated from {len(segments)} to 20")
             segments = segments[:20]
 
         # Update session state
@@ -146,6 +166,11 @@ async def take_screenshot(
             format=format_suffix,
             full_page=full_page,
         )
+        logger.debug(f"Screenshot result: {result_obj.model_dump()}")
+        logger.debug("Screenshot segments details: [")
+        for idx, seg in enumerate(segments):
+            logger.debug(f"  Segment {idx}: size={len(seg.data)} bytes, media_type={seg.media_type}")
+        logger.debug("]")
 
         # Return with multi-modal content
         return ToolReturn(
@@ -155,6 +180,7 @@ async def take_screenshot(
 
     except Exception as e:
         # Error handling
+        logger.error(f"Failed to take screenshot: {e}")
         return ToolReturn(
             return_value=ScreenshotResult(
                 status="error",
@@ -181,10 +207,12 @@ async def take_element_screenshot(
         - return_value: ElementScreenshotResult
         - content: Image segment(s)
     """
+    logger.info(f"Taking element screenshot for selector: {selector}")
     session = get_browser_session()
 
     try:
         # Enable DOM domain
+        logger.info("Enabling DOM domain...")
         await session.cdp_client.send.DOM.enable(session_id=session.page)
 
         # Get document
@@ -202,6 +230,7 @@ async def take_element_screenshot(
 
         node_id = result.get("nodeId")
         if not node_id or node_id == 0:
+            logger.warning(f"Element not found for selector: {selector}")
             return ToolReturn(
                 return_value=ElementScreenshotResult(
                     status="not_found",
@@ -213,6 +242,7 @@ async def take_element_screenshot(
             )
 
         # Get element box model
+        logger.info(f"Getting box model for node_id: {node_id}")
         box_result = await session.cdp_client.send.DOM.getBoxModel(params={"nodeId": node_id}, session_id=session.page)
         border = box_result["model"]["border"]
 
@@ -228,9 +258,11 @@ async def take_element_screenshot(
             "width": width,
             "height": height,
         }
+        logger.info(f"Element bounds: x={x}, y={y}, width={width}, height={height}")
 
         # Capture with clip
         format_suffix = img_format.split("/")[1] if "/" in img_format else img_format
+        logger.info("Capturing element screenshot...")
         screenshot_result = await session.cdp_client.send.Page.captureScreenshot(
             params={
                 "format": format_suffix,
@@ -247,27 +279,35 @@ async def take_element_screenshot(
 
         screenshot_data = screenshot_result["data"]
         image_bytes = base64.b64decode(screenshot_data)
+        logger.info(f"Element screenshot captured ({len(image_bytes)} bytes)")
+
         segments = split_image_data(
             image_bytes=image_bytes,
             max_height=4096,
             media_type=img_format,
         )
+        logger.info(f"Element screenshot split into {len(segments)} segments")
 
         # Element screenshots should be small, but still limit
         if len(segments) > 20:
+            logger.warning(f"Element screenshot segments truncated from {len(segments)} to 20")
             segments = segments[:20]
 
+        result_obj = ElementScreenshotResult(
+            status="success",
+            selector=selector,
+            segments_count=len(segments),
+            element_info=element_info,
+        )
+        logger.debug(f"Element screenshot result: {result_obj.model_dump()}")
+
         return ToolReturn(
-            return_value=ElementScreenshotResult(
-                status="success",
-                selector=selector,
-                segments_count=len(segments),
-                element_info=element_info,
-            ).model_dump(),
+            return_value=result_obj.model_dump(),
             content=segments,
         )
 
     except Exception as e:
+        logger.error(f"Failed to take element screenshot for {selector}: {e}")
         return ToolReturn(
             return_value=ElementScreenshotResult(
                 status="error",
@@ -285,5 +325,8 @@ async def get_viewport_info() -> dict[str, int]:
     Returns:
         Dictionary with width and height
     """
+    logger.info("Getting viewport information")
     session = get_browser_session()
-    return session.viewport.copy()
+    viewport = session.viewport.copy()
+    logger.info(f"Viewport: {viewport['width']}x{viewport['height']}")
+    return viewport

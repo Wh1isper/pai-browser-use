@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from pai_browser_use._logger import logger
 from pai_browser_use._tools import BrowserSession, get_browser_session
 from pai_browser_use.tools._types import ClickResult, ExecuteScriptResult, TypeTextResult
 
@@ -17,16 +18,20 @@ async def click_element(selector: str) -> dict[str, Any]:
     Returns:
         ClickResult dictionary
     """
+    logger.info(f"Attempting to click element: {selector}")
     session = get_browser_session()
 
     try:
         # Enable DOM
+        logger.info("Enabling DOM domain...")
         await session.cdp_client.send.DOM.enable(session_id=session.page)
 
         # Get document and find element
+        logger.info("Getting document root...")
         doc = await session.cdp_client.send.DOM.getDocument(session_id=session.page)
         root_node_id = doc["root"]["nodeId"]
 
+        logger.info(f"Querying selector: {selector}")
         result = await session.cdp_client.send.DOM.querySelector(
             params={
                 "nodeId": root_node_id,
@@ -37,6 +42,7 @@ async def click_element(selector: str) -> dict[str, Any]:
 
         node_id = result.get("nodeId")
         if not node_id or node_id == 0:
+            logger.warning(f"Element not found: {selector}")
             return ClickResult(
                 status="not_found",
                 selector=selector,
@@ -44,6 +50,7 @@ async def click_element(selector: str) -> dict[str, Any]:
             ).model_dump()
 
         # Get box model
+        logger.info(f"Getting box model for node_id: {node_id}")
         box_result = await session.cdp_client.send.DOM.getBoxModel(params={"nodeId": node_id}, session_id=session.page)
         border = box_result["model"]["border"]
 
@@ -57,6 +64,9 @@ async def click_element(selector: str) -> dict[str, Any]:
             "width": border[4] - border[0],
             "height": border[5] - border[1],
         }
+        logger.info(f"Clicking at position: x={x:.1f}, y={y:.1f}")
+        logger.debug(f"Element info for '{selector}': {element_info}")
+        logger.debug(f"Box model border: {border}")
 
         # Perform click using Input domain
         await session.cdp_client.send.Input.dispatchMouseEvent(
@@ -85,6 +95,7 @@ async def click_element(selector: str) -> dict[str, Any]:
         import asyncio
 
         await asyncio.sleep(0.5)
+        logger.info(f"Successfully clicked element: {selector}")
 
         return ClickResult(
             status="success",
@@ -93,6 +104,7 @@ async def click_element(selector: str) -> dict[str, Any]:
         ).model_dump()
 
     except Exception as e:
+        logger.error(f"Failed to click element {selector}: {e}")
         return ClickResult(
             status="error",
             selector=selector,
@@ -111,12 +123,15 @@ async def type_text(selector: str, text: str, clear_first: bool = True) -> dict[
     Returns:
         TypeTextResult dictionary
     """
+    logger.info(f"Typing text into element: {selector} (clear_first: {clear_first}, text_length: {len(text)})")
     session = get_browser_session()
 
     try:
         # First click the element to focus
+        logger.info(f"Focusing element {selector}...")
         click_result = await click_element(selector)
         if click_result["status"] != "success":
+            logger.warning(f"Could not focus element {selector}: {click_result.get('error_message')}")
             return TypeTextResult(
                 status=click_result["status"],
                 selector=selector,
@@ -127,6 +142,7 @@ async def type_text(selector: str, text: str, clear_first: bool = True) -> dict[
         # Clear if requested
         if clear_first:
             # Select all (Cmd+A or Ctrl+A)
+            logger.info("Clearing existing text...")
             is_mac = await _is_mac(session)
             await session.cdp_client.send.Input.dispatchKeyEvent(
                 params={
@@ -165,8 +181,11 @@ async def type_text(selector: str, text: str, clear_first: bool = True) -> dict[
             )
 
         # Type each character
+        logger.info(f"Typing {len(text)} characters...")
+        logger.debug(f"Text to type: '{text}'")
         for char in text:
             await session.cdp_client.send.Input.insertText(params={"text": char}, session_id=session.page)
+        logger.info(f"Successfully typed text into {selector}")
 
         return TypeTextResult(
             status="success",
@@ -175,6 +194,7 @@ async def type_text(selector: str, text: str, clear_first: bool = True) -> dict[
         ).model_dump()
 
     except Exception as e:
+        logger.error(f"Failed to type text into {selector}: {e}")
         return TypeTextResult(
             status="error",
             selector=selector,
@@ -192,10 +212,12 @@ async def execute_javascript(script: str) -> dict[str, Any]:
     Returns:
         ExecuteScriptResult dictionary with result or error
     """
+    logger.info(f"Executing JavaScript (script length: {len(script)} characters)")
     session = get_browser_session()
 
     try:
         # Execute script
+        logger.info("Evaluating script via Runtime.evaluate...")
         result = await session.cdp_client.send.Runtime.evaluate(
             params={
                 "expression": script,
@@ -205,17 +227,23 @@ async def execute_javascript(script: str) -> dict[str, Any]:
         )
 
         if "exceptionDetails" in result:
+            logger.error(f"JavaScript execution exception: {result['exceptionDetails']}")
             return ExecuteScriptResult(
                 status="error",
                 error_message=str(result["exceptionDetails"]),
             ).model_dump()
 
+        script_result = result.get("result", {}).get("value")
+        logger.info("JavaScript executed successfully")
+        logger.debug(f"JavaScript execution result: {script_result}")
+        logger.debug(f"JavaScript script executed: {script[:200]}{'...' if len(script) > 200 else ''}")
         return ExecuteScriptResult(
             status="success",
-            result=result.get("result", {}).get("value"),
+            result=script_result,
         ).model_dump()
 
     except Exception as e:
+        logger.error(f"Failed to execute JavaScript: {e}")
         return ExecuteScriptResult(
             status="error",
             error_message=str(e),
@@ -232,6 +260,7 @@ async def scroll_to(x: int = 0, y: int = 0) -> dict[str, Any]:
     Returns:
         ExecuteScriptResult dictionary
     """
+    logger.info(f"Scrolling page to position: x={x}, y={y}")
     return await execute_javascript(f"window.scrollTo({x}, {y})")
 
 
