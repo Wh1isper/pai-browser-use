@@ -6,32 +6,43 @@ from typing import Any, Generic, Self
 
 import httpx
 from cdp_use.client import CDPClient
-from pydantic_ai import RunContext
+from pydantic_ai import RunContext, Tool
 from pydantic_ai.toolsets import AbstractToolset, ToolsetTool
 from typing_extensions import TypeVar
 
+from pai_browser_use._logger import logger
 from pai_browser_use._session import BrowserSession
-from pai_browser_use._tools import TOOLS, build_tool
+from pai_browser_use._tools import build_tool
+from pai_browser_use.tools import ALL_TOOLS
 
 AgentDepsT = TypeVar("AgentDepsT", default=None, contravariant=True)
 """Keep this for custom context types in the future."""
 
 
 def get_cdp_websocket_url(cdp_url: str) -> str:
+    logger.info(f"Resolving CDP WebSocket URL from: {cdp_url}")
+
     # If the URL already starts with ws:// or wss://, treat it as a WebSocket URL
     if cdp_url.startswith(("ws://", "wss://")):
+        logger.info(f"Using direct WebSocket URL: {cdp_url}")
         return cdp_url
 
     # Otherwise, treat it as an HTTP endpoint and fetch the WebSocket URL
+    logger.info(f"Fetching WebSocket URL from HTTP endpoint: {cdp_url}")
     response = httpx.get(cdp_url)
     response.raise_for_status()
     try:
         data = response.json()
     except ValueError as e:
+        logger.error(f"Failed to parse CDP response as JSON: {response.text}")
         raise ValueError(f"Invalid CDP response. {response.text}") from e
     if "webSocketDebuggerUrl" not in data:
+        logger.error(f"CDP response missing webSocketDebuggerUrl field: {data}")
         raise ValueError(f"Invalid CDP response. {data=}")
-    return data["webSocketDebuggerUrl"]
+
+    websocket_url = data["webSocketDebuggerUrl"]
+    logger.info(f"Resolved WebSocket URL: {websocket_url}")
+    return websocket_url
 
 
 @dataclass(kw_only=True)
@@ -48,18 +59,12 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         max_retries: int = 3,
     ) -> None:
         self.cdp_url = cdp_url
+        self.max_retries = max_retries
 
         self._cdp_client: CDPClient | None = None
 
-        self._browser_session = BrowserSession()
-        self._tools = [
-            build_tool(
-                self._browser_session,
-                tool,
-                max_retries=max_retries,
-            )
-            for tool in TOOLS
-        ]
+        self._browser_session: BrowserSession | None = None
+        self._tools: list[Tool[AgentDepsT]] | None = None
 
     @property
     def id(self) -> str | None:
@@ -69,10 +74,75 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
     async def __aenter__(self) -> Self:
         """Enter the toolset context.
 
-        This sets up the CDP client connection.
+        This sets up the CDP client connection and creates or attaches to a page.
         """
+        logger.info("Initializing BrowserUseToolset context")
+
         websocket_url = get_cdp_websocket_url(self.cdp_url)
+        logger.info("Connecting to CDP WebSocket...")
         self._cdp_client = await CDPClient(websocket_url).__aenter__()
+        logger.info("CDP client connected successfully")
+
+        # Get existing targets
+        logger.info("Fetching existing browser targets...")
+        targets_response = await self._cdp_client.send.Target.getTargets()
+        target_infos = targets_response.get("targetInfos", [])
+        logger.info(f"Found {len(target_infos)} existing targets")
+        logger.debug(
+            f"Target list: {[{'targetId': t.get('targetId'), 'type': t.get('type'), 'url': t.get('url', 'N/A')[:50]} for t in target_infos]}"
+        )
+
+        # Find existing page target or create new one
+        page_target = None
+        for target_info in target_infos:
+            if target_info.get("type") == "page":
+                page_target = target_info
+                break
+
+        if page_target:
+            # Reuse existing page
+            target_id = page_target["targetId"]
+            logger.info(f"Reusing existing page target: {target_id}")
+        else:
+            # Create a new page target
+            logger.info("No existing page target found, creating new page...")
+            create_response = await self._cdp_client.send.Target.createTarget(params={"url": "about:blank"})
+            target_id = create_response["targetId"]
+            logger.info(f"Created new page target: {target_id}")
+
+        # Attach to the target to get a session
+        logger.info(f"Attaching to target {target_id}...")
+        attach_response = await self._cdp_client.send.Target.attachToTarget(
+            params={"targetId": target_id, "flatten": True}
+        )
+        session_id = attach_response["sessionId"]
+
+        if session_id is None:
+            logger.error("Failed to obtain session ID from target attachment")
+            raise ValueError("Failed to get session ID from target attachment")
+
+        logger.info(f"Attached to target, session_id: {session_id}")
+
+        self._browser_session = BrowserSession(
+            cdp_client=self._cdp_client,
+            page=session_id,  # Store session_id as page reference
+        )
+        logger.info("BrowserSession created successfully")
+        logger.debug(f"Session details - page: {session_id}, viewport: {self._browser_session.viewport}")
+
+        # Rebuild tools with actual session
+        logger.info(f"Building {len(ALL_TOOLS)} browser tools...")
+        self._tools = [
+            build_tool(
+                self._browser_session,
+                tool,
+                max_retries=self.max_retries,
+            )
+            for tool in ALL_TOOLS
+        ]
+        logger.info("All tools built and ready")
+        logger.debug(f"Tool names: {[tool.tool_def.name for tool in self._tools]}")
+
         return self
 
     async def __aexit__(self, *args: Any) -> bool | None:
@@ -80,9 +150,22 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
 
         This tears down the CDP client connection.
         """
+        logger.info("Cleaning up BrowserUseToolset context")
+
         if self._cdp_client:
+            logger.info("Closing CDP client connection...")
             await self._cdp_client.__aexit__(*args)
             self._cdp_client = None
+            logger.info("CDP client connection closed")
+
+        if self._browser_session:
+            logger.info("Disposing browser session...")
+            logger.debug(
+                f"Session state before disposal - URL: {self._browser_session.current_url}, History: {len(self._browser_session.navigation_history)} entries"
+            )
+            self._browser_session.dispose()
+            logger.info("Browser session disposed")
+        self._tools = None
         return None
 
     async def get_tools(self, ctx: RunContext[AgentDepsT]) -> dict[str, BrowserUseTool[AgentDepsT]]:
@@ -103,7 +186,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         name: str,
         tool_args: dict[str, Any],
         ctx: RunContext[AgentDepsT],
-        tool: ToolsetTool[AgentDepsT],
+        tool: BrowserUseTool[AgentDepsT],
     ) -> Any:
         """Call a tool with the given arguments.
 
