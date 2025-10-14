@@ -57,9 +57,13 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         self,
         cdp_url: str,
         max_retries: int = 3,
+        prefix: str | None = None,
+        always_use_new_page: bool = False,
     ) -> None:
         self.cdp_url = cdp_url
         self.max_retries = max_retries
+        self.prefix = prefix or self.id
+        self.always_use_new_page = always_use_new_page
 
         self._cdp_client: CDPClient | None = None
 
@@ -69,7 +73,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
     @property
     def id(self) -> str | None:
         """An optional identifier for the toolset to distinguish it from other instances of the same class."""
-        return "browser-use"
+        return "browser_use"
 
     async def __aenter__(self) -> Self:
         """Enter the toolset context.
@@ -83,32 +87,40 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         self._cdp_client = await CDPClient(websocket_url).__aenter__()
         logger.info("CDP client connected successfully")
 
-        # Get existing targets
-        logger.info("Fetching existing browser targets...")
-        targets_response = await self._cdp_client.send.Target.getTargets()
-        target_infos = targets_response.get("targetInfos", [])
-        logger.info(f"Found {len(target_infos)} existing targets")
-        logger.debug(
-            f"Target list: {[{'targetId': t.get('targetId'), 'type': t.get('type'), 'url': t.get('url', 'N/A')[:50]} for t in target_infos]}"
-        )
-
-        # Find existing page target or create new one
-        page_target = None
-        for target_info in target_infos:
-            if target_info.get("type") == "page":
-                page_target = target_info
-                break
-
-        if page_target:
-            # Reuse existing page
-            target_id = page_target["targetId"]
-            logger.info(f"Reusing existing page target: {target_id}")
-        else:
-            # Create a new page target
-            logger.info("No existing page target found, creating new page...")
+        # Determine whether to reuse existing page or create new one
+        if self.always_use_new_page:
+            # Always create a new page target
+            logger.info("always_use_new_page is True, creating new page...")
             create_response = await self._cdp_client.send.Target.createTarget(params={"url": "about:blank"})
             target_id = create_response["targetId"]
             logger.info(f"Created new page target: {target_id}")
+        else:
+            # Get existing targets
+            logger.info("Fetching existing browser targets...")
+            targets_response = await self._cdp_client.send.Target.getTargets()
+            target_infos = targets_response.get("targetInfos", [])
+            logger.info(f"Found {len(target_infos)} existing targets")
+            logger.debug(
+                f"Target list: {[{'targetId': t.get('targetId'), 'type': t.get('type'), 'url': t.get('url', 'N/A')[:50]} for t in target_infos]}"
+            )
+
+            # Find existing page target or create new one
+            page_target = None
+            for target_info in target_infos:
+                if target_info.get("type") == "page":
+                    page_target = target_info
+                    break
+
+            if page_target:
+                # Reuse existing page
+                target_id = page_target["targetId"]
+                logger.info(f"Reusing existing page target: {target_id}")
+            else:
+                # Create a new page target
+                logger.info("No existing page target found, creating new page...")
+                create_response = await self._cdp_client.send.Target.createTarget(params={"url": "about:blank"})
+                target_id = create_response["targetId"]
+                logger.info(f"Created new page target: {target_id}")
 
         # Attach to the target to get a session
         logger.info(f"Attaching to target {target_id}...")
@@ -171,7 +183,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
     async def get_tools(self, ctx: RunContext[AgentDepsT]) -> dict[str, BrowserUseTool[AgentDepsT]]:
         """The tools that are available in this toolset. Similar to FunctionToolset but no need to handle prepare"""
         return {
-            tool.name: BrowserUseTool(
+            f"{self.prefix}_{tool.name}": BrowserUseTool(
                 toolset=self,
                 tool_def=tool.tool_def,
                 max_retries=tool.max_retries,

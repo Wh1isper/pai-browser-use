@@ -167,10 +167,6 @@ async def take_screenshot(
             full_page=full_page,
         )
         logger.debug(f"Screenshot result: {result_obj.model_dump()}")
-        logger.debug("Screenshot segments details: [")
-        for idx, seg in enumerate(segments):
-            logger.debug(f"  Segment {idx}: size={len(seg.data)} bytes, media_type={seg.media_type}")
-        logger.debug("]")
 
         # Return with multi-modal content
         return ToolReturn(
