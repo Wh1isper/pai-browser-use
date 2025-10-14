@@ -8,14 +8,14 @@ from pai_browser_use.tools.query import get_element_attributes, get_element_text
 from pai_browser_use.toolset import BrowserUseToolset
 
 
-async def test_find_elements(cdp_url):
+async def test_find_elements(cdp_url, test_server):
     """Test finding elements on page."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first using tool
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Find h1 elements
         tool = build_tool(session, find_elements)
@@ -32,13 +32,13 @@ async def test_find_elements(cdp_url):
             assert "text" in element
 
 
-async def test_find_elements_not_found(cdp_url):
+async def test_find_elements_not_found(cdp_url, test_server):
     """Test finding elements with selector that doesn't match."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Find non-existent elements
         tool = build_tool(session, find_elements)
@@ -49,13 +49,13 @@ async def test_find_elements_not_found(cdp_url):
         assert len(result["elements"]) == 0
 
 
-async def test_find_elements_with_limit(cdp_url):
+async def test_find_elements_with_limit(cdp_url, test_server):
     """Test finding elements with result limit."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Find all elements with small limit
         tool = build_tool(session, find_elements)
@@ -65,13 +65,13 @@ async def test_find_elements_with_limit(cdp_url):
         assert len(result["elements"]) <= 5
 
 
-async def test_get_element_text(cdp_url):
+async def test_get_element_text(cdp_url, test_server):
     """Test getting element text content."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Get text from h1 element
         text_tool = build_tool(session, get_element_text)
@@ -81,13 +81,13 @@ async def test_get_element_text(cdp_url):
         # May be empty if h1 doesn't exist, but should not raise error
 
 
-async def test_get_element_attributes(cdp_url):
+async def test_get_element_attributes(cdp_url, test_server):
     """Test getting element attributes."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Get attributes from link element
         attr_tool = build_tool(session, get_element_attributes)
@@ -96,13 +96,13 @@ async def test_get_element_attributes(cdp_url):
         assert isinstance(result, dict)
 
 
-async def test_get_element_attributes_specific(cdp_url):
+async def test_get_element_attributes_specific(cdp_url, test_server):
     """Test getting specific attributes from element."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Get specific attributes
         attr_tool = build_tool(session, get_element_attributes)

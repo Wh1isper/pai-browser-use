@@ -88,6 +88,9 @@ async def tool_function(param: type) -> dict | ToolReturn:
 - Tests use `build_tool()` to create testable tool instances
 - Tools can be invoked independently via `tool.function_schema.call()`
 - Docker-based Chrome container for isolated testing (via `conftest.py`)
+- **Nginx container serves local test HTML files** (eliminates external dependencies)
+- **Docker network architecture**: Chrome and Nginx containers communicate via shared network
+- Test fixtures located in `tests/test_fixtures/` directory
 - Function-style test organization
 
 ## Key Design Decisions
@@ -98,8 +101,17 @@ async def tool_function(param: type) -> dict | ToolReturn:
 1. **Automatic Image Splitting**: Handle long pages transparently for LLM compatibility
 1. **Page Reuse Strategy**: When initializing, reuse existing page targets if available, otherwise create new ones
 1. **Direct CDP API Access**: Tools use `session.cdp_client.send.{Domain}.{method}()` directly to leverage full type hints and autocomplete from cdp-use library
+1. **Intelligent Wait Strategy**: Navigation tools use `asyncio.timeout` with `wait_for_load_state` for reliable page load detection instead of fixed `asyncio.sleep` delays
 
 ## Development Guidelines
+
+### Code Quality Standards
+
+1. **Import Organization**:
+
+   - All imports MUST be at the top of the file
+   - Never use imports inside functions or methods
+   - Follow standard import ordering: stdlib, third-party, local
 
 1. **Adding New Tools**:
 
@@ -122,6 +134,69 @@ async def tool_function(param: type) -> dict | ToolReturn:
    - Append to `session.navigation_history` when appropriate
    - Use session cache for performance when applicable
 
+1. **Wait and Timeout Patterns**:
+
+   - **Never use `asyncio.sleep()` for page load waits** - use `wait_for_load_state()` instead
+   - Use `asyncio.timeout()` context manager for operation-level timeout control
+   - Navigation tools pattern:
+     ```python
+     try:
+         await _wait_for_page_ready("load", timeout_ms=timeout)
+     except TimeoutError:
+         # Log warning but continue to get partial page info
+         logger.warning("Page load timeout, attempting to get current state")
+     ```
+   - `asyncio.sleep()` is acceptable only for polling intervals in wait loops (e.g., 100ms polling)
+   - Use appropriate load states: `"load"` for full page, `"domcontentloaded"` for history navigation
+   - History navigation typically uses shorter timeout (5s) vs full navigation (30s+)
+
+### Development Workflow
+
+This project uses `uv` for dependency management and task automation. All development tasks should be run through `make` commands or `uv run`.
+
+**Available Make Commands:**
+
+```bash
+# Setup and Installation
+make install          # Create virtual environment and install pre-commit hooks
+
+# Code Quality
+make check            # Run all code quality checks (lock file, linting, dependency check)
+                     # This runs: uv lock --locked, pre-commit, and deptry
+
+# Testing
+make test            # Run pytest with coverage reporting
+                     # Use: uv run python -m pytest (not direct pytest)
+
+# Building
+make build           # Build wheel file for distribution
+make clean-build     # Clean build artifacts
+```
+
+**Running Commands Manually:**
+
+Always use `uv run` prefix when running Python tools:
+
+```bash
+# Correct - using uv run
+uv run pytest tests/
+uv run python -m pytest tests/ --cov=pai_browser_use
+uv run pre-commit run -a
+uv run deptry .
+
+# Incorrect - direct invocation
+pytest tests/          # ❌ Don't do this
+python -m pytest       # ❌ Don't do this
+```
+
+**Pre-commit Workflow:**
+
+The project uses pre-commit hooks for code quality:
+
+- Runs automatically on `git commit`
+- Can be run manually with `make check` or `uv run pre-commit run -a`
+- Includes: ruff (linting), ruff format, file checks, JSON/YAML/TOML validation
+
 ## Dependencies
 
 - `cdp-use`: CDP client library
@@ -131,15 +206,71 @@ async def tool_function(param: type) -> dict | ToolReturn:
 
 ## Testing
 
+### Test Architecture
+
+The test suite uses a Docker-based architecture with two containers:
+
+1. **Nginx Container** (`test-server`): Serves local HTML test files from `tests/test_fixtures/`
+1. **Chrome Container** (`chrome-test`): Headless Chrome browser for CDP testing
+1. **Docker Network** (`pai-test-network`): Allows containers to communicate
+
+**Key Benefits:**
+
+- No external dependencies (example.com no longer used)
+- Fully offline testing capability
+- Predictable and controllable test pages
+- Faster test execution (no network latency)
+- Better CI/CD reliability
+
+### Test Fixtures
+
+Test HTML files are organized in `tests/test_fixtures/`:
+
+- `basic.html` - Basic page elements (h1, p, div, links)
+- `forms.html` - Form controls (input, select, checkbox, radio, file upload)
+- `interactive.html` - Interactive elements (buttons, hover, scroll)
+- `navigation/page*.html` - Multi-page navigation testing
+- `dialogs.html` - JavaScript dialog triggers (alert, confirm, prompt)
+- `dynamic.html` - Dynamic content and delayed elements
+- `long_page.html` - Long page for screenshot segmentation testing
+
+### Running Tests
+
+**IMPORTANT:** Always use `uv run` or `make test` to run tests:
+
 ```bash
-# Run all tests
-pytest tests/
+# Run all tests (recommended)
+make test
+
+# Run all tests manually
+uv run python -m pytest tests/
 
 # Run specific test file
-pytest tests/test_tools.py -v
+uv run pytest tests/test_navigation.py -v
 
 # Run with coverage
-pytest tests/ --cov=pai_browser_use
+uv run pytest tests/ --cov=pai_browser_use
+
+# Skip slow Docker-based tests (run only unit tests)
+uv run pytest tests/test_image_utils.py tests/test_tools.py -v
+
+# Verbose output
+uv run pytest tests/ -vv
+```
+
+### Test Fixture Usage
+
+Tests receive the `test_server` fixture which provides the base URL:
+
+```python
+async def test_example(cdp_url, test_server):
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+        nav_tool = build_tool(session, navigate_to_url)
+        await nav_tool.function_schema.call(
+            {"url": f"{test_server}/test_fixtures/basic.html"},
+            None
+        )
 ```
 
 ## Example Usage

@@ -12,14 +12,14 @@ from pai_browser_use.tools.wait import (
 from pai_browser_use.toolset import BrowserUseToolset
 
 
-async def test_wait_for_selector_visible(cdp_url):
+async def test_wait_for_selector_visible(cdp_url, test_server):
     """Test waiting for a visible element."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Wait for an element that exists
         wait_tool = build_tool(session, wait_for_selector)
@@ -31,14 +31,14 @@ async def test_wait_for_selector_visible(cdp_url):
         assert "elapsed_time" in result
 
 
-async def test_wait_for_selector_timeout(cdp_url):
+async def test_wait_for_selector_timeout(cdp_url, test_server):
     """Test waiting for a non-existent element (timeout)."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Wait for an element that doesn't exist
         wait_tool = build_tool(session, wait_for_selector)
@@ -51,14 +51,14 @@ async def test_wait_for_selector_timeout(cdp_url):
         assert "error_message" in result
 
 
-async def test_wait_for_selector_attached(cdp_url):
+async def test_wait_for_selector_attached(cdp_url, test_server):
     """Test waiting for element in attached state."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Wait for an element in attached state
         wait_tool = build_tool(session, wait_for_selector)
@@ -68,14 +68,14 @@ async def test_wait_for_selector_attached(cdp_url):
         assert result["wait_type"] == "selector"
 
 
-async def test_wait_for_load_state_load(cdp_url):
+async def test_wait_for_load_state_load(cdp_url, test_server):
     """Test waiting for page load state."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Wait for load state
         wait_tool = build_tool(session, wait_for_load_state)
@@ -86,14 +86,14 @@ async def test_wait_for_load_state_load(cdp_url):
         assert "elapsed_time" in result
 
 
-async def test_wait_for_load_state_domcontentloaded(cdp_url):
+async def test_wait_for_load_state_domcontentloaded(cdp_url, test_server):
     """Test waiting for DOMContentLoaded state."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Wait for DOMContentLoaded
         wait_tool = build_tool(session, wait_for_load_state)
@@ -103,22 +103,23 @@ async def test_wait_for_load_state_domcontentloaded(cdp_url):
         assert result["wait_type"] == "load_state"
 
 
-async def test_wait_for_navigation_with_link_click(cdp_url):
+async def test_wait_for_navigation_with_link_click(cdp_url, test_server):
     """Test waiting for navigation after triggering navigation."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate to example.com
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a link that navigates and click it
         js_tool = build_tool(session, execute_javascript)
+        nav_url = f"{test_server}/test_fixtures/navigation/page1.html"
         await js_tool.function_schema.call(
             {
-                "script": """
+                "script": f"""
             const link = document.createElement('a');
-            link.href = 'https://example.org';
+            link.href = '{nav_url}';
             link.id = 'test-link';
             link.textContent = 'Test Link';
             document.body.appendChild(link);
@@ -138,14 +139,14 @@ async def test_wait_for_navigation_with_link_click(cdp_url):
         assert result["wait_type"] == "navigation"
 
 
-async def test_wait_for_load_state_networkidle(cdp_url):
+async def test_wait_for_load_state_networkidle(cdp_url, test_server):
     """Test waiting for network idle state."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Wait for network idle
         wait_tool = build_tool(session, wait_for_load_state)

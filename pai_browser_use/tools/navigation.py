@@ -3,11 +3,43 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Literal
 
 from pai_browser_use._logger import logger
 from pai_browser_use._tools import get_browser_session
 from pai_browser_use.tools._types import NavigationResult
+from pai_browser_use.tools.wait import wait_for_load_state
+
+
+async def _wait_for_page_ready(
+    state: Literal["load", "domcontentloaded"] = "load",
+    timeout_ms: int = 30000,
+) -> None:
+    """Wait for page to reach ready state with timeout control.
+
+    Args:
+        state: Load state to wait for ("load" or "domcontentloaded")
+        timeout_ms: Timeout in milliseconds
+
+    Raises:
+        TimeoutError: If page does not reach ready state within timeout
+        RuntimeError: If page load fails
+    """
+    wait_result = await wait_for_load_state(state, timeout=timeout_ms)
+
+    if wait_result["status"] == "error":  # pragma: no cover
+        error_msg = wait_result.get("error_message", "Unknown error")
+        logger.error(f"Page load state check failed: {error_msg}")
+        raise RuntimeError(f"Page load failed: {error_msg}")
+
+    if wait_result["status"] == "timeout":
+        elapsed = wait_result.get("elapsed_time", 0)
+        logger.warning(f"Page load state timeout after {elapsed:.2f}s")
+        raise TimeoutError(f"Page did not reach '{state}' state within {timeout_ms}ms")
+
+    # status == "success"
+    elapsed = wait_result.get("elapsed_time", 0)
+    logger.info(f"Page ready (state: {state}) after {elapsed:.2f}s")
 
 
 async def navigate_to_url(url: str, timeout: int = 30000) -> dict[str, Any]:
@@ -32,11 +64,15 @@ async def navigate_to_url(url: str, timeout: int = 30000) -> dict[str, Any]:
         logger.info(f"Sending CDP Page.navigate command for: {url}")
         await session.cdp_client.send.Page.navigate(params={"url": url}, session_id=session.page)
 
-        # Wait a moment for navigation to complete
-        import asyncio
-
-        logger.info("Waiting for navigation to complete...")
-        await asyncio.sleep(1)
+        # Wait for page to load with timeout control
+        try:
+            await _wait_for_page_ready("load", timeout_ms=timeout)
+        except TimeoutError as e:
+            # Timeout but continue to try getting page info
+            logger.warning(f"Navigation timeout: {e}, attempting to get current page info")
+        except Exception as e:  # pragma: no cover
+            # Other errors, log but continue
+            logger.error(f"Error during page load wait: {e}")
 
         # Get page info after navigation
         logger.info("Fetching page information after navigation...")
@@ -54,14 +90,12 @@ async def navigate_to_url(url: str, timeout: int = 30000) -> dict[str, Any]:
         )
 
         info = json.loads(result["result"]["value"])
-        logger.info(f"Navigation successful - URL: {info['url']}, Title: {info['title']}")
-        logger.debug(f"Full navigation info: {info}")
+        logger.info(f"Navigation info - URL: {info['url']}, Title: {info['title']}")
 
         # Update session state
         session.current_url = info["url"]
         session.current_title = info["title"]
         session.navigation_history.append(info["url"])
-        logger.info(f"Session state updated, navigation history length: {len(session.navigation_history)}")
 
         return NavigationResult(
             status="success",
@@ -111,11 +145,15 @@ async def go_back() -> dict[str, Any]:
                 params={"entryId": entry_id}, session_id=session.page
             )
 
-            # Wait and get updated info
-            import asyncio
+            # Wait for page to load (history navigation usually faster)
+            try:
+                await _wait_for_page_ready("domcontentloaded", timeout_ms=5000)
+            except TimeoutError:
+                logger.warning("History navigation timeout, but continuing")
+            except Exception as e:  # pragma: no cover
+                logger.error(f"Error during history navigation wait: {e}")
 
-            await asyncio.sleep(0.5)
-
+            # Get updated info
             result = await session.cdp_client.send.Runtime.evaluate(
                 params={
                     "expression": """
@@ -130,7 +168,6 @@ async def go_back() -> dict[str, Any]:
             )
 
             info = json.loads(result["result"]["value"])
-            logger.debug(f"Page info after going back: {info}")
 
             session.current_url = info["url"]
             session.current_title = info["title"]
@@ -141,7 +178,7 @@ async def go_back() -> dict[str, Any]:
                 url=info["url"],
                 title=info["title"],
             ).model_dump()
-        else:
+        else:  # pragma: no cover
             logger.warning("Cannot go back - already at the first page in history")
             return NavigationResult(
                 status="error",
@@ -183,11 +220,15 @@ async def go_forward() -> dict[str, Any]:
                 params={"entryId": entry_id}, session_id=session.page
             )
 
-            # Wait and get updated info
-            import asyncio
+            # Wait for page to load (history navigation usually faster)
+            try:
+                await _wait_for_page_ready("domcontentloaded", timeout_ms=5000)
+            except TimeoutError:
+                logger.warning("History navigation timeout, but continuing")
+            except Exception as e:  # pragma: no cover
+                logger.error(f"Error during history navigation wait: {e}")
 
-            await asyncio.sleep(0.5)
-
+            # Get updated info
             result = await session.cdp_client.send.Runtime.evaluate(
                 params={
                     "expression": """
@@ -202,7 +243,6 @@ async def go_forward() -> dict[str, Any]:
             )
 
             info = json.loads(result["result"]["value"])
-            logger.debug(f"Page info after going forward: {info}")
 
             session.current_url = info["url"]
             session.current_title = info["title"]
@@ -247,10 +287,14 @@ async def reload_page(ignore_cache: bool = False) -> dict[str, Any]:
         logger.info("Sending CDP Page.reload command...")
         await session.cdp_client.send.Page.reload(params={"ignoreCache": ignore_cache}, session_id=session.page)
 
-        # Wait for reload
-        import asyncio
-
-        await asyncio.sleep(1)
+        # Wait for reload to complete (longer timeout if ignoring cache)
+        timeout_ms = 45000 if ignore_cache else 30000
+        try:
+            await _wait_for_page_ready("load", timeout_ms=timeout_ms)
+        except TimeoutError:
+            logger.warning(f"Page reload timeout after {timeout_ms}ms")
+        except Exception as e:  # pragma: no cover
+            logger.error(f"Error during reload wait: {e}")
 
         # Get updated page info
         result = await session.cdp_client.send.Runtime.evaluate(
@@ -267,7 +311,6 @@ async def reload_page(ignore_cache: bool = False) -> dict[str, Any]:
         )
 
         info = json.loads(result["result"]["value"])
-        logger.debug(f"Page info after reload: {info}")
 
         session.current_url = info["url"]
         session.current_title = info["title"]

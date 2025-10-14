@@ -14,14 +14,14 @@ from pai_browser_use.tools.state import get_viewport_info, take_element_screensh
 from pai_browser_use.toolset import BrowserUseToolset
 
 
-async def test_get_page_info(cdp_url):
+async def test_get_page_info(cdp_url, test_server):
     """Test getting page information."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first using tool
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Get page info
         tool = build_tool(session, get_page_info)
@@ -32,17 +32,17 @@ async def test_get_page_info(cdp_url):
         assert "title" in result
         assert "ready_state" in result
         assert "viewport" in result
-        assert "example.com" in result["url"]
+        assert "basic.html" in result["url"]
 
 
-async def test_get_page_content(cdp_url):
+async def test_get_page_content(cdp_url, test_server):
     """Test getting page content."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first using tool
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Get text content
         tool = build_tool(session, get_page_content)
@@ -53,13 +53,13 @@ async def test_get_page_content(cdp_url):
         assert "Example" in result or "example" in result.lower()
 
 
-async def test_get_page_content_html(cdp_url):
+async def test_get_page_content_html(cdp_url, test_server):
     """Test getting page HTML content."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Get HTML content
         tool = build_tool(session, get_page_content)
@@ -70,14 +70,14 @@ async def test_get_page_content_html(cdp_url):
         assert "<html" in result.lower() or "<!doctype" in result.lower()
 
 
-async def test_take_screenshot(cdp_url):
+async def test_take_screenshot(cdp_url, test_server):
     """Test screenshot capture with ToolReturn structure."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first using tool
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Take screenshot
         tool = build_tool(session, take_screenshot)
@@ -110,13 +110,13 @@ async def test_take_screenshot(cdp_url):
         assert img.size[1] > 0
 
 
-async def test_take_screenshot_full_page(cdp_url):
+async def test_take_screenshot_full_page(cdp_url, test_server):
     """Test taking full page screenshot."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Take full page screenshot
         tool = build_tool(session, take_screenshot)
@@ -128,13 +128,13 @@ async def test_take_screenshot_full_page(cdp_url):
         assert len(result.content) > 0
 
 
-async def test_take_screenshot_jpeg(cdp_url):
+async def test_take_screenshot_jpeg(cdp_url, test_server):
     """Test taking screenshot in JPEG format."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Take JPEG screenshot
         tool = build_tool(session, take_screenshot)
@@ -145,13 +145,13 @@ async def test_take_screenshot_jpeg(cdp_url):
         assert result.return_value["format"] == "jpeg"
 
 
-async def test_take_element_screenshot(cdp_url):
+async def test_take_element_screenshot(cdp_url, test_server):
     """Test taking screenshot of specific element."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Take element screenshot
         tool = build_tool(session, take_element_screenshot)
@@ -162,13 +162,13 @@ async def test_take_element_screenshot(cdp_url):
         assert result.return_value["status"] in ["success", "not_found"]
 
 
-async def test_take_element_screenshot_not_found(cdp_url):
+async def test_take_element_screenshot_not_found(cdp_url, test_server):
     """Test taking screenshot of non-existent element."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Try non-existent element
         tool = build_tool(session, take_element_screenshot)
@@ -179,7 +179,7 @@ async def test_take_element_screenshot_not_found(cdp_url):
         assert len(result.content) == 0
 
 
-async def test_get_viewport_info(cdp_url):
+async def test_get_viewport_info(cdp_url, test_server):
     """Test getting viewport information."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
