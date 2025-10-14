@@ -151,6 +151,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
                 self._browser_session,
                 tool,
                 max_retries=self.max_retries,
+                prefix=self.prefix,
             )
             for tool in ALL_TOOLS
         ]
@@ -196,7 +197,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
     async def get_tools(self, ctx: RunContext[AgentDepsT]) -> dict[str, BrowserUseTool[AgentDepsT]]:
         """The tools that are available in this toolset. Similar to FunctionToolset but no need to handle prepare"""
         return {
-            f"{self.prefix}_{tool.name}": BrowserUseTool(
+            tool.name: BrowserUseTool(
                 toolset=self,
                 tool_def=tool.tool_def,
                 max_retries=tool.max_retries,

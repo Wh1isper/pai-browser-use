@@ -19,7 +19,7 @@ Pydantic AI Toolsets for browser automation using Chrome DevTools Protocol (CDP)
 
    - Context-based session injection using `ContextVar`
    - `get_browser_session()` retrieves current session in tool functions
-   - `build_tool()` wraps functions to inject session transparently
+   - `build_tool()` wraps functions to inject session transparently and applies optional prefix to tool names
 
 1. **BrowserUseToolset** (`toolset.py`)
 
