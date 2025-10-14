@@ -69,6 +69,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
 
         self._browser_session: BrowserSession | None = None
         self._tools: list[Tool[AgentDepsT]] | None = None
+        self._created_target_id: str | None = None  # Track created page target for cleanup
 
     @property
     def id(self) -> str | None:
@@ -93,6 +94,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
             logger.info("always_use_new_page is True, creating new page...")
             create_response = await self._cdp_client.send.Target.createTarget(params={"url": "about:blank"})
             target_id = create_response["targetId"]
+            self._created_target_id = target_id  # Track for cleanup
             logger.info(f"Created new page target: {target_id}")
         else:
             # Get existing targets
@@ -160,9 +162,20 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
     async def __aexit__(self, *args: Any) -> bool | None:
         """Exit the toolset context.
 
-        This tears down the CDP client connection.
+        This tears down the CDP client connection and closes created page if needed.
         """
         logger.info("Cleaning up BrowserUseToolset context")
+
+        # Close the created page target if we created one
+        if self._created_target_id and self._cdp_client:
+            try:
+                logger.info(f"Closing created page target: {self._created_target_id}")
+                await self._cdp_client.send.Target.closeTarget(params={"targetId": self._created_target_id})
+                logger.info(f"Successfully closed page target: {self._created_target_id}")
+            except Exception as e:  # pragma: no cover
+                logger.warning(f"Failed to close page target {self._created_target_id}: {e}")
+            finally:
+                self._created_target_id = None
 
         if self._cdp_client:
             logger.info("Closing CDP client connection...")

@@ -92,6 +92,66 @@ async def test_browser_use_toolset_always_use_new_page_true_initialization(cdp_u
         assert ts._cdp_client is not None
 
 
+async def test_browser_use_toolset_closes_created_page_on_exit(cdp_url):
+    """Test that created page is closed when exiting context if always_use_new_page=True."""
+    # Get initial page count
+    from cdp_use.client import CDPClient
+
+    from pai_browser_use.toolset import get_cdp_websocket_url
+
+    websocket_url = get_cdp_websocket_url(cdp_url)
+    async with CDPClient(websocket_url) as client:
+        targets_before = await client.send.Target.getTargets()
+        page_count_before = sum(1 for t in targets_before.get("targetInfos", []) if t.get("type") == "page")
+
+        # Create toolset with always_use_new_page=True
+        toolset = BrowserUseToolset(cdp_url, always_use_new_page=True)
+        created_target_id = None
+
+        async with toolset as ts:
+            # Verify a new page was created
+            created_target_id = ts._created_target_id
+            assert created_target_id is not None
+
+            targets_during = await client.send.Target.getTargets()
+            page_count_during = sum(1 for t in targets_during.get("targetInfos", []) if t.get("type") == "page")
+            assert page_count_during == page_count_before + 1
+
+        # After exiting context, verify the page was closed
+        targets_after = await client.send.Target.getTargets()
+        page_count_after = sum(1 for t in targets_after.get("targetInfos", []) if t.get("type") == "page")
+        assert page_count_after == page_count_before
+
+        # Verify the specific target was closed
+        target_ids_after = [t.get("targetId") for t in targets_after.get("targetInfos", [])]
+        assert created_target_id not in target_ids_after
+
+
+async def test_browser_use_toolset_does_not_close_reused_page_on_exit(cdp_url):
+    """Test that reused page is NOT closed when exiting context if always_use_new_page=False."""
+    # Get initial page count
+    from cdp_use.client import CDPClient
+
+    from pai_browser_use.toolset import get_cdp_websocket_url
+
+    websocket_url = get_cdp_websocket_url(cdp_url)
+    async with CDPClient(websocket_url) as client:
+        targets_before = await client.send.Target.getTargets()
+        page_count_before = sum(1 for t in targets_before.get("targetInfos", []) if t.get("type") == "page")
+
+        # Create toolset with always_use_new_page=False (default)
+        toolset = BrowserUseToolset(cdp_url, always_use_new_page=False)
+
+        async with toolset as ts:
+            # Verify no target was marked for creation
+            assert ts._created_target_id is None
+
+        # After exiting context, verify page count remains the same
+        targets_after = await client.send.Target.getTargets()
+        page_count_after = sum(1 for t in targets_after.get("targetInfos", []) if t.get("type") == "page")
+        assert page_count_after == page_count_before
+
+
 def test_browser_use_toolset_default_prefix():
     """Test that prefix defaults to toolset.id when not provided."""
     toolset = BrowserUseToolset(cdp_url="http://localhost:9222/json/version")
