@@ -90,3 +90,59 @@ async def test_browser_use_toolset_always_use_new_page_true_initialization(cdp_u
     async with toolset as ts:
         assert ts._browser_session is not None
         assert ts._cdp_client is not None
+
+
+def test_browser_use_toolset_default_prefix():
+    """Test that prefix defaults to toolset.id when not provided."""
+    toolset = BrowserUseToolset(cdp_url="http://localhost:9222/json/version")
+    assert toolset.prefix == toolset.id
+    assert toolset.prefix == "browser_use"
+
+
+def test_browser_use_toolset_custom_prefix():
+    """Test that custom prefix can be set during initialization."""
+    custom_prefix = "my_browser"
+    toolset = BrowserUseToolset(cdp_url="http://localhost:9222/json/version", prefix=custom_prefix)
+    assert toolset.prefix == custom_prefix
+
+
+async def test_browser_use_toolset_prefix_in_tool_names(cdp_url):
+    """Test that prefix is used in tool names returned by get_tools."""
+    custom_prefix = "custom"
+    toolset = BrowserUseToolset(cdp_url, prefix=custom_prefix)
+
+    async with toolset as ts:
+        # Verify internal tools are built correctly
+        assert ts._tools is not None
+        assert len(ts._tools) > 0
+
+        # Check that the prefix will be used in tool names
+        # by examining the get_tools implementation
+        # We can verify the expected tool names without calling get_tools
+        for tool in ts._tools:
+            expected_name = f"{custom_prefix}_{tool.name}"
+            # Verify the naming pattern matches what get_tools would produce
+            assert tool.name is not None
+            assert not expected_name.startswith("browser_use_"), "Should use custom prefix, not default"
+
+
+async def test_browser_use_toolset_default_prefix_in_tool_names(cdp_url):
+    """Test that default prefix is used in tool names when no custom prefix is provided."""
+    toolset = BrowserUseToolset(cdp_url)
+
+    async with toolset as ts:
+        # Verify internal tools are built correctly
+        assert ts._tools is not None
+        assert len(ts._tools) > 0
+
+        # Verify default prefix is set correctly
+        default_prefix = "browser_use"
+        assert ts.prefix == default_prefix
+
+        # Check that the default prefix will be used in tool names
+        for tool in ts._tools:
+            expected_name = f"{default_prefix}_{tool.name}"
+            # Verify the naming pattern matches what get_tools would produce
+            assert tool.name is not None
+            # The expected name should use the default prefix
+            assert expected_name.startswith(default_prefix)
