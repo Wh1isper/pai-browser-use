@@ -45,6 +45,7 @@ def build_tool(
     browser_session: BrowserSession,
     func: CleanToolFunc,
     max_retries: int = 3,
+    prefix: str | None = None,
 ) -> Tool:
     """Build a tool by injecting browser_session through context variables.
 
@@ -55,12 +56,13 @@ def build_tool(
         browser_session: BrowserSession instance to inject
         func: Tool function to wrap
         max_retries: Maximum number of retries for this tool (default: 3)
+        prefix: Optional prefix to add to the tool name
 
     Returns:
         Configured Tool instance
     """
     tool_name = func.__name__
-    logger.info(f"Building tool: {tool_name} (max_retries: {max_retries})")
+    logger.info(f"Building tool: {tool_name} (max_retries: {max_retries}, prefix: {prefix})")
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -83,7 +85,13 @@ def build_tool(
     # Preserve original function's signature
     wrapper.__signature__ = inspect.signature(func)
 
+    # Apply prefix to tool name if provided
+    tool_name_with_prefix = f"{prefix}_{tool_name}" if prefix else None
+    if tool_name_with_prefix:
+        logger.debug(f"Applied prefix to tool: {tool_name} -> {tool_name_with_prefix}")
+
     return Tool(
         function=wrapper,
         max_retries=max_retries,
+        name=tool_name_with_prefix,
     )
