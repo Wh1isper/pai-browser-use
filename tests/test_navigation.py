@@ -132,3 +132,118 @@ async def test_go_forward_no_history(cdp_url, test_server):
         # Should return error for no next page
         assert result["status"] == "error"
         assert "history" in result.get("error_message", "").lower()
+
+
+async def test_navigate_with_timeout(cdp_url, test_server):
+    """Test navigation with very short timeout to trigger timeout handling."""
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+
+        # Use extremely short timeout (1ms) to trigger timeout path
+        nav_tool = build_tool(session, navigate_to_url)
+        result = await nav_tool.function_schema.call(
+            {"url": f"{test_server}/test_fixtures/basic.html", "timeout": 1}, None
+        )
+
+        # Should still succeed but with timeout warning logged
+        # The function continues after timeout to get page info
+        assert result["status"] == "success"
+        assert "basic.html" in result["url"]
+
+
+async def test_go_back_with_timeout(cdp_url, test_server):
+    """Test go_back with timeout during history navigation."""
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+
+        # Navigate to multiple pages to build history
+        nav_tool = build_tool(session, navigate_to_url)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/navigation/page1.html"}, None)
+
+        # Monkey patch _wait_for_page_ready to trigger timeout for go_back
+        from pai_browser_use.tools import navigation
+
+        original_wait = navigation._wait_for_page_ready
+
+        async def mock_wait_timeout(*args, **kwargs):
+            raise TimeoutError("Simulated timeout")
+
+        navigation._wait_for_page_ready = mock_wait_timeout
+
+        try:
+            back_tool = build_tool(session, go_back)
+            result = await back_tool.function_schema.call({}, None)
+
+            # Should still succeed despite timeout
+            assert result["status"] == "success"
+            assert "basic.html" in result["url"]
+        finally:
+            # Restore original function
+            navigation._wait_for_page_ready = original_wait
+
+
+async def test_go_forward_with_timeout(cdp_url, test_server):
+    """Test go_forward with timeout during history navigation."""
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+
+        # Navigate and go back to build forward history
+        nav_tool = build_tool(session, navigate_to_url)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/navigation/page1.html"}, None)
+
+        back_tool = build_tool(session, go_back)
+        await back_tool.function_schema.call({}, None)
+
+        # Monkey patch _wait_for_page_ready to trigger timeout for go_forward
+        from pai_browser_use.tools import navigation
+
+        original_wait = navigation._wait_for_page_ready
+
+        async def mock_wait_timeout(*args, **kwargs):
+            raise TimeoutError("Simulated timeout")
+
+        navigation._wait_for_page_ready = mock_wait_timeout
+
+        try:
+            forward_tool = build_tool(session, go_forward)
+            result = await forward_tool.function_schema.call({}, None)
+
+            # Should still succeed despite timeout
+            assert result["status"] == "success"
+            assert "page1.html" in result["url"]
+        finally:
+            # Restore original function
+            navigation._wait_for_page_ready = original_wait
+
+
+async def test_reload_page_with_timeout(cdp_url, test_server):
+    """Test reload_page with timeout during reload wait."""
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+
+        # Navigate first
+        nav_tool = build_tool(session, navigate_to_url)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
+
+        # Monkey patch _wait_for_page_ready to trigger timeout for reload
+        from pai_browser_use.tools import navigation
+
+        original_wait = navigation._wait_for_page_ready
+
+        async def mock_wait_timeout(*args, **kwargs):
+            raise TimeoutError("Simulated timeout")
+
+        navigation._wait_for_page_ready = mock_wait_timeout
+
+        try:
+            reload_tool = build_tool(session, reload_page)
+            result = await reload_tool.function_schema.call({"ignore_cache": False}, None)
+
+            # Should still succeed despite timeout
+            assert result["status"] == "success"
+            assert "basic.html" in result["url"]
+        finally:
+            # Restore original function
+            navigation._wait_for_page_ready = original_wait
