@@ -6,8 +6,6 @@
 [![Commit activity](https://img.shields.io/github/commit-activity/m/wh1isper/pai-browser-use)](https://img.shields.io/github/commit-activity/m/wh1isper/pai-browser-use)
 [![License](https://img.shields.io/github/license/wh1isper/pai-browser-use)](https://img.shields.io/github/license/wh1isper/pai-browser-use)
 
-**🚧 Work in Progress**
-
 Pydantic AI Toolsets for browser automation using Chrome DevTools Protocol (CDP).
 
 Inspired by [browser-use](https://github.com/browser-use/browser-use), designed for [Pydantic AI](https://ai.pydantic.dev/) agents.
@@ -18,6 +16,20 @@ Inspired by [browser-use](https://github.com/browser-use/browser-use), designed 
 - **Multi-Modal Screenshots**: Automatic image splitting for long pages with ToolReturn support
 - **Type-Safe CDP Integration**: Direct access to cdp-use API with full type hints
 - **Fully Tested**: Comprehensive test suite with Docker-based Chrome container
+
+## Installation
+
+Use pip:
+
+```bash
+pip install pai-browser-use
+```
+
+Or use uv:
+
+```bash
+uv add pai-browser-use
+```
 
 ## Quick Start
 
@@ -162,4 +174,4 @@ PAI_BROWSER_USE_LOG_LEVEL=DEBUG python demo_debug_logging.py
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+BSD 3-Clause License - see [LICENSE](LICENSE) for details.

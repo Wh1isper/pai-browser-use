@@ -27,18 +27,10 @@ def docker_client():
 def cdp_url(docker_client):
     """Start headless Chrome container and return CDP URL"""
     chrome_port = get_port()
-    container_name = "headless-chrome-test"
     image = "zenika/alpine-chrome:latest"
     container = None
 
     try:
-        # Remove existing container with same name if exists
-        try:
-            existing_container = docker_client.containers.get(container_name)
-            existing_container.remove(force=True)
-        except docker.errors.NotFound:
-            pass
-
         # Start Chrome container
         container = docker_client.containers.run(
             image,
@@ -52,7 +44,6 @@ def cdp_url(docker_client):
             detach=True,
             ports={"9222": chrome_port},
             remove=True,
-            name=container_name,
         )
 
         # Wait for Chrome to start and accept connections

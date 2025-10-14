@@ -33,10 +33,10 @@ def get_cdp_websocket_url(cdp_url: str) -> str:
     response.raise_for_status()
     try:
         data = response.json()
-    except ValueError as e:
+    except ValueError as e:  # pragma: no cover
         logger.error(f"Failed to parse CDP response as JSON: {response.text}")
         raise ValueError(f"Invalid CDP response. {response.text}") from e
-    if "webSocketDebuggerUrl" not in data:
+    if "webSocketDebuggerUrl" not in data:  # pragma: no cover
         logger.error(f"CDP response missing webSocketDebuggerUrl field: {data}")
         raise ValueError(f"Invalid CDP response. {data=}")
 
@@ -117,7 +117,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         )
         session_id = attach_response["sessionId"]
 
-        if session_id is None:
+        if session_id is None:  # pragma: no cover
             logger.error("Failed to obtain session ID from target attachment")
             raise ValueError("Failed to get session ID from target attachment")
 
