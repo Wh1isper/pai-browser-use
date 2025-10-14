@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
@@ -33,8 +34,6 @@ async def navigate_to_url(url: str, timeout: int = 30000) -> dict[str, Any]:
         await session.cdp_client.send.Page.navigate(params={"url": url}, session_id=session.page)
 
         # Wait a moment for navigation to complete
-        import asyncio
-
         logger.info("Waiting for navigation to complete...")
         await asyncio.sleep(1)
 
@@ -112,8 +111,6 @@ async def go_back() -> dict[str, Any]:
             )
 
             # Wait and get updated info
-            import asyncio
-
             await asyncio.sleep(0.5)
 
             result = await session.cdp_client.send.Runtime.evaluate(
@@ -184,8 +181,6 @@ async def go_forward() -> dict[str, Any]:
             )
 
             # Wait and get updated info
-            import asyncio
-
             await asyncio.sleep(0.5)
 
             result = await session.cdp_client.send.Runtime.evaluate(
@@ -248,8 +243,6 @@ async def reload_page(ignore_cache: bool = False) -> dict[str, Any]:
         await session.cdp_client.send.Page.reload(params={"ignoreCache": ignore_cache}, session_id=session.page)
 
         # Wait for reload
-        import asyncio
-
         await asyncio.sleep(1)
 
         # Get updated page info

@@ -1,3 +1,5 @@
+from cdp_use.client import CDPClient
+
 from pai_browser_use.toolset import BrowserUseToolset, get_cdp_websocket_url
 
 
@@ -95,10 +97,6 @@ async def test_browser_use_toolset_always_use_new_page_true_initialization(cdp_u
 async def test_browser_use_toolset_closes_created_page_on_exit(cdp_url):
     """Test that created page is closed when exiting context if always_use_new_page=True."""
     # Get initial page count
-    from cdp_use.client import CDPClient
-
-    from pai_browser_use.toolset import get_cdp_websocket_url
-
     websocket_url = get_cdp_websocket_url(cdp_url)
     async with CDPClient(websocket_url) as client:
         targets_before = await client.send.Target.getTargets()
@@ -130,10 +128,6 @@ async def test_browser_use_toolset_closes_created_page_on_exit(cdp_url):
 async def test_browser_use_toolset_does_not_close_reused_page_on_exit(cdp_url):
     """Test that reused page is NOT closed when exiting context if always_use_new_page=False."""
     # Get initial page count
-    from cdp_use.client import CDPClient
-
-    from pai_browser_use.toolset import get_cdp_websocket_url
-
     websocket_url = get_cdp_websocket_url(cdp_url)
     async with CDPClient(websocket_url) as client:
         targets_before = await client.send.Target.getTargets()

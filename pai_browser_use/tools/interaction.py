@@ -97,11 +97,6 @@ async def click_element(selector: str) -> dict[str, Any]:
             },
             session_id=session.page,
         )
-
-        # Wait a moment
-        import asyncio
-
-        await asyncio.sleep(0.5)
         logger.info(f"Successfully clicked element: {selector}")
 
         return ClickResult(

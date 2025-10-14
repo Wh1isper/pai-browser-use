@@ -8,14 +8,14 @@ from pai_browser_use.tools.validation import is_checked, is_enabled, is_visible
 from pai_browser_use.toolset import BrowserUseToolset
 
 
-async def test_is_visible_true(cdp_url):
+async def test_is_visible_true(cdp_url, test_server):
     """Test checking if a visible element is visible."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Check if h1 is visible
         visible_tool = build_tool(session, is_visible)
@@ -25,14 +25,14 @@ async def test_is_visible_true(cdp_url):
         assert result["result"] is True
 
 
-async def test_is_visible_false(cdp_url):
+async def test_is_visible_false(cdp_url, test_server):
     """Test checking if a hidden element is visible."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a hidden element
         js_tool = build_tool(session, execute_javascript)
@@ -56,14 +56,14 @@ async def test_is_visible_false(cdp_url):
         assert result["result"] is False
 
 
-async def test_is_enabled_true(cdp_url):
+async def test_is_enabled_true(cdp_url, test_server):
     """Test checking if an enabled element is enabled."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create an enabled input
         js_tool = build_tool(session, execute_javascript)
@@ -86,14 +86,14 @@ async def test_is_enabled_true(cdp_url):
         assert result["result"] is True
 
 
-async def test_is_enabled_false(cdp_url):
+async def test_is_enabled_false(cdp_url, test_server):
     """Test checking if a disabled element is enabled."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a disabled input
         js_tool = build_tool(session, execute_javascript)
@@ -117,14 +117,14 @@ async def test_is_enabled_false(cdp_url):
         assert result["result"] is False
 
 
-async def test_is_checked_true(cdp_url):
+async def test_is_checked_true(cdp_url, test_server):
     """Test checking if a checked checkbox is checked."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a checked checkbox
         js_tool = build_tool(session, execute_javascript)
@@ -149,14 +149,14 @@ async def test_is_checked_true(cdp_url):
         assert result["result"] is True
 
 
-async def test_is_checked_false(cdp_url):
+async def test_is_checked_false(cdp_url, test_server):
     """Test checking if an unchecked checkbox is checked."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create an unchecked checkbox
         js_tool = build_tool(session, execute_javascript)
@@ -180,14 +180,14 @@ async def test_is_checked_false(cdp_url):
         assert result["result"] is False
 
 
-async def test_is_visible_not_found(cdp_url):
+async def test_is_visible_not_found(cdp_url, test_server):
     """Test checking visibility of non-existent element."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Check non-existent element
         visible_tool = build_tool(session, is_visible)
@@ -196,14 +196,14 @@ async def test_is_visible_not_found(cdp_url):
         assert result["status"] == "not_found"
 
 
-async def test_is_checked_wrong_element_type(cdp_url):
+async def test_is_checked_wrong_element_type(cdp_url, test_server):
     """Test checking if a non-checkbox element is checked."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a text input (not checkbox)
         js_tool = build_tool(session, execute_javascript)

@@ -8,14 +8,14 @@ from pai_browser_use.tools.form import check, select_option, uncheck, upload_fil
 from pai_browser_use.toolset import BrowserUseToolset
 
 
-async def test_select_option_by_value(cdp_url):
+async def test_select_option_by_value(cdp_url, test_server):
     """Test selecting option by value."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a select element
         js_tool = build_tool(session, execute_javascript)
@@ -46,14 +46,14 @@ async def test_select_option_by_value(cdp_url):
         assert result["value"] == "value2"
 
 
-async def test_select_option_by_label(cdp_url):
+async def test_select_option_by_label(cdp_url, test_server):
     """Test selecting option by label."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a select element
         js_tool = build_tool(session, execute_javascript)
@@ -86,14 +86,14 @@ async def test_select_option_by_label(cdp_url):
         assert result["label"] == "Second Option"
 
 
-async def test_select_option_by_index(cdp_url):
+async def test_select_option_by_index(cdp_url, test_server):
     """Test selecting option by index."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a select element
         js_tool = build_tool(session, execute_javascript)
@@ -124,14 +124,14 @@ async def test_select_option_by_index(cdp_url):
         assert result["index"] == 1
 
 
-async def test_check_checkbox(cdp_url):
+async def test_check_checkbox(cdp_url, test_server):
     """Test checking a checkbox."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a checkbox
         js_tool = build_tool(session, execute_javascript)
@@ -155,14 +155,14 @@ async def test_check_checkbox(cdp_url):
         assert result["checked"] is True
 
 
-async def test_uncheck_checkbox(cdp_url):
+async def test_uncheck_checkbox(cdp_url, test_server):
     """Test unchecking a checkbox."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a checked checkbox
         js_tool = build_tool(session, execute_javascript)
@@ -187,14 +187,14 @@ async def test_uncheck_checkbox(cdp_url):
         assert result["checked"] is False
 
 
-async def test_check_radio(cdp_url):
+async def test_check_radio(cdp_url, test_server):
     """Test checking a radio button."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a radio button
         js_tool = build_tool(session, execute_javascript)
@@ -219,14 +219,14 @@ async def test_check_radio(cdp_url):
         assert result["checked"] is True
 
 
-async def test_upload_file_not_found(cdp_url, tmp_path):
+async def test_upload_file_not_found(cdp_url, test_server, tmp_path):
     """Test file upload with non-existent element."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Create a temporary file using pytest's tmp_path fixture
         temp_file = tmp_path / "test_file.txt"
@@ -240,14 +240,14 @@ async def test_upload_file_not_found(cdp_url, tmp_path):
         assert result["status"] == "not_found"
 
 
-async def test_select_option_not_found(cdp_url):
+async def test_select_option_not_found(cdp_url, test_server):
     """Test selecting option on non-existent element."""
     async with BrowserUseToolset(cdp_url) as toolset:
         session = toolset._browser_session
 
         # Navigate first
         nav_tool = build_tool(session, navigate_to_url)
-        await nav_tool.function_schema.call({"url": "https://example.com"}, None)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
 
         # Try to select on non-existent element
         select_tool = build_tool(session, select_option)
