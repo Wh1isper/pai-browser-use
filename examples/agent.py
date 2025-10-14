@@ -6,14 +6,15 @@ You can use Chrome or Chromium with the --remote-debugging-port flag:
 Or you can run `dev/start-browser-container.sh` to start a Chrome container with CDP enabled.
 """
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import os
 
-from dotenv import load_dotenv
 from pydantic_ai import Agent
 
 from pai_browser_use import BrowserUseToolset
-
-load_dotenv()
 
 MODEL_NAME = os.getenv("MODEL_NAME", "anthropic:claude-sonnet-4-5")
 
