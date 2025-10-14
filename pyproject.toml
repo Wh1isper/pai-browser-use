@@ -137,3 +137,7 @@ skip_empty = true
 [tool.coverage.run]
 branch = true
 source = ["pai_browser_use"]
+omit = [
+    "tests/*",
+    "pai_browser_use/_logger.py",
+]
