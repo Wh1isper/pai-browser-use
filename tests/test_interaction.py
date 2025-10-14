@@ -179,3 +179,42 @@ async def test_focus(cdp_url, test_server):
 
         assert result["status"] in ["success", "not_found", "error"]
         assert "selector" in result
+
+
+async def test_type_text_with_clear(cdp_url, test_server):
+    """Test typing text with clear_first=True actually clears existing text."""
+    async with BrowserUseToolset(cdp_url) as toolset:
+        session = toolset._browser_session
+
+        # Navigate first
+        nav_tool = build_tool(session, navigate_to_url)
+        await nav_tool.function_schema.call({"url": f"{test_server}/test_fixtures/basic.html"}, None)
+
+        # Create an input with existing value
+        js_tool = build_tool(session, execute_javascript)
+        await js_tool.function_schema.call(
+            {
+                "script": """
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'test-input-clear';
+            input.value = 'existing text';
+            document.body.appendChild(input);
+        """
+            },
+            None,
+        )
+
+        # Type with clear_first=True
+        type_tool = build_tool(session, type_text)
+        result = await type_tool.function_schema.call(
+            {"selector": "#test-input-clear", "text": "new text", "clear_first": True}, None
+        )
+
+        assert result["status"] == "success"
+
+        # Verify the value was replaced (not appended)
+        verify_result = await js_tool.function_schema.call(
+            {"script": "document.querySelector('#test-input-clear').value"}, None
+        )
+        assert verify_result["result"] == "new text"

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from pai_browser_use._logger import logger
-from pai_browser_use._tools import BrowserSession, get_browser_session
+from pai_browser_use._tools import get_browser_session
 from pai_browser_use.tools._types import (
     ClickResult,
     ExecuteScriptResult,
@@ -142,42 +142,24 @@ async def type_text(selector: str, text: str, clear_first: bool = True) -> dict[
             ).model_dump()
 
         # Clear if requested
-        if clear_first:  # pragma: no cover
-            # Select all (Cmd+A or Ctrl+A)
+        if clear_first:
+            # Use JavaScript to clear the value - more reliable than keyboard simulation
             logger.info("Clearing existing text...")
-            is_mac = await _is_mac(session)
-            await session.cdp_client.send.Input.dispatchKeyEvent(
+            clear_script = f"""
+                (() => {{
+                    const element = document.querySelector({selector!r});
+                    if (element) {{
+                        element.value = '';
+                        element.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        return true;
+                    }}
+                    return false;
+                }})()
+            """
+            await session.cdp_client.send.Runtime.evaluate(
                 params={
-                    "type": "keyDown",
-                    "key": "a",
-                    "code": "KeyA",
-                    "modifiers": 8 if is_mac else 2,  # 8=Cmd, 2=Ctrl
-                },
-                session_id=session.page,
-            )
-            await session.cdp_client.send.Input.dispatchKeyEvent(
-                params={
-                    "type": "keyUp",
-                    "key": "a",
-                    "code": "KeyA",
-                },
-                session_id=session.page,
-            )
-
-            # Delete
-            await session.cdp_client.send.Input.dispatchKeyEvent(
-                params={
-                    "type": "keyDown",
-                    "key": "Backspace",
-                    "code": "Backspace",
-                },
-                session_id=session.page,
-            )
-            await session.cdp_client.send.Input.dispatchKeyEvent(
-                params={
-                    "type": "keyUp",
-                    "key": "Backspace",
-                    "code": "Backspace",
+                    "expression": clear_script,
+                    "returnByValue": True,
                 },
                 session_id=session.page,
             )
@@ -473,15 +455,3 @@ async def focus(selector: str) -> dict[str, Any]:
             selector=selector,
             error_message=str(e),
         ).model_dump()
-
-
-async def _is_mac(session: BrowserSession) -> bool:
-    """Check if platform is Mac."""
-    result = await session.cdp_client.send.Runtime.evaluate(
-        params={
-            "expression": "navigator.platform.toLowerCase().includes('mac')",
-            "returnByValue": True,
-        },
-        session_id=session.page,
-    )
-    return result["result"]["value"]
