@@ -101,6 +101,7 @@ async def tool_function(param: type) -> dict | ToolReturn:
 1. **Automatic Image Splitting**: Handle long pages transparently for LLM compatibility
 1. **Page Reuse Strategy**: When initializing, reuse existing page targets if available, otherwise create new ones
 1. **Direct CDP API Access**: Tools use `session.cdp_client.send.{Domain}.{method}()` directly to leverage full type hints and autocomplete from cdp-use library
+1. **Intelligent Wait Strategy**: Navigation tools use `asyncio.timeout` with `wait_for_load_state` for reliable page load detection instead of fixed `asyncio.sleep` delays
 
 ## Development Guidelines
 
@@ -132,6 +133,22 @@ async def tool_function(param: type) -> dict | ToolReturn:
    - Update `session.current_url`, `session.current_title` after navigation
    - Append to `session.navigation_history` when appropriate
    - Use session cache for performance when applicable
+
+1. **Wait and Timeout Patterns**:
+
+   - **Never use `asyncio.sleep()` for page load waits** - use `wait_for_load_state()` instead
+   - Use `asyncio.timeout()` context manager for operation-level timeout control
+   - Navigation tools pattern:
+     ```python
+     try:
+         await _wait_for_page_ready("load", timeout_ms=timeout)
+     except TimeoutError:
+         # Log warning but continue to get partial page info
+         logger.warning("Page load timeout, attempting to get current state")
+     ```
+   - `asyncio.sleep()` is acceptable only for polling intervals in wait loops (e.g., 100ms polling)
+   - Use appropriate load states: `"load"` for full page, `"domcontentloaded"` for history navigation
+   - History navigation typically uses shorter timeout (5s) vs full navigation (30s+)
 
 ### Development Workflow
 
