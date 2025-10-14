@@ -86,75 +86,7 @@ See [examples/agent.py](examples/agent.py) for a complete example.
 
 ## Logging
 
-The project includes detailed INFO level logging for debugging and development. By default, only ERROR logs are shown.
-
-### Enable Detailed Logging
-
-```bash
-# Set log level via environment variable
-export PAI_BROWSER_USE_LOG_LEVEL=INFO
-
-# Then run your script
-python your_script.py
-```
-
-### Available Log Levels
-
-- `ERROR` (default): Only show errors
-- `WARNING`: Show warnings and errors
-- `INFO`: Show detailed operation flow
-- `DEBUG`: Show all debugging information including actual data
-
-### What Gets Logged
-
-**INFO level** shows:
-
-- CDP connection establishment
-- Browser target creation/reuse
-- Tool execution lifecycle
-- Page navigation steps
-- Screenshot capture and processing
-- Element interactions and queries
-- Session state updates
-- Resource cleanup
-
-**DEBUG level** additionally shows:
-
-- **Extracted text content** (first 500 characters)
-- **HTML content preview** (first 500 characters)
-- **Element details** (tag, text, attributes, position)
-- **JavaScript execution results**
-- **Tool call arguments and return types**
-- **Full page information** (URL, title, viewport)
-- All intermediate data for debugging
-
-### Examples
-
-**INFO Level** - See operation flow:
-
-```python
-import os
-os.environ["PAI_BROWSER_USE_LOG_LEVEL"] = "INFO"
-
-from pai_browser_use import BrowserUseToolset
-
-async with BrowserUseToolset(cdp_url="http://localhost:9222/json/version") as toolset:
-    # Shows what operations are being performed
-    pass
-```
-
-**DEBUG Level** - See actual data:
-
-```python
-import os
-os.environ["PAI_BROWSER_USE_LOG_LEVEL"] = "DEBUG"
-
-from pai_browser_use.tools.state import get_page_content
-
-# Will show the actual text/HTML extracted
-content = await get_page_content(content_format="text")
-# DEBUG log shows: "Text content preview (first 500 chars): ..."
-```
+Use `PAI_BROWSER_USE_LOG_LEVEL` environment variable to set logging level. The default is `ERROR`. Set to `DEBUG` for more verbose logging.
 
 ## Development
 
