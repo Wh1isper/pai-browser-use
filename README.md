@@ -6,6 +6,13 @@
 [![Commit activity](https://img.shields.io/github/commit-activity/m/wh1isper/pai-browser-use)](https://img.shields.io/github/commit-activity/m/wh1isper/pai-browser-use)
 [![License](https://img.shields.io/github/license/wh1isper/pai-browser-use)](https://img.shields.io/github/license/wh1isper/pai-browser-use)
 
+> **⚠️ Early Stage Project**
+> This project is currently in early development. APIs and features may change. We welcome your feedback and contributions!
+>
+> - 🐛 Found a bug? [Submit an issue](https://github.com/wh1isper/pai-browser-use/issues/new)
+> - 💡 Have ideas or suggestions? [Join the discussion](https://github.com/wh1isper/pai-browser-use/discussions)
+> - 🤝 Want to contribute? Check out our [Contributing Guide](CONTRIBUTING.md)
+
 Pydantic AI Toolsets for browser automation using Chrome DevTools Protocol (CDP).
 
 Inspired by [browser-use](https://github.com/browser-use/browser-use), designed for [Pydantic AI](https://ai.pydantic.dev/) agents.
