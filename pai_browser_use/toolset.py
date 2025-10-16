@@ -63,6 +63,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         max_retries: int | None = None,
         prefix: str | None = None,
         always_use_new_page: bool | None = None,
+        auto_cleanup_page: bool | None = None,
     ) -> None:
         """Initialize the browser toolset.
 
@@ -71,23 +72,20 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
             max_retries: Max retry attempts for tool calls. If None, loads from environment or defaults to 3.
             prefix: Tool name prefix. If None, loads from environment or defaults to toolset ID.
             always_use_new_page: Force create new page instead of reusing existing. If None, loads from environment or defaults to False.
+            auto_cleanup_page: Automatically close created page targets on context exit. If None, loads from environment or defaults to False.
+                Can be combined with always_use_new_page=True to create new pages and automatically clean them up.
         """
         # Load settings from environment variables
         settings = BrowserUseSettings()
 
         self.cdp_url = cdp_url
-        # Use parameter value if provided, otherwise fall back to settings, then to defaults
-        self.max_retries = (
-            max_retries
-            if max_retries is not None
-            else (settings.max_retries if settings.max_retries is not None else 3)
-        )
-        self.prefix = prefix if prefix is not None else (settings.prefix if settings.prefix is not None else self.id)
+        # Use parameter value if provided, otherwise fall back to settings
+        self.max_retries = max_retries if max_retries is not None else settings.max_retries
+        self.prefix = prefix if prefix is not None else settings.prefix or self.id
         self.always_use_new_page = (
-            always_use_new_page
-            if always_use_new_page is not None
-            else (settings.always_use_new_page if settings.always_use_new_page is not None else False)
+            always_use_new_page if always_use_new_page is not None else settings.always_use_new_page
         )
+        self.auto_cleanup_page = auto_cleanup_page if auto_cleanup_page is not None else settings.auto_cleanup_page
 
         # Internal state initialized during context entry
         self._cdp_client: CDPClient | None = None
@@ -148,6 +146,7 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
                 logger.info("No existing page target found, creating new page...")
                 create_response = await self._cdp_client.send.Target.createTarget(params={"url": "about:blank"})
                 target_id = create_response["targetId"]
+                self._created_target_id = target_id  # Track for cleanup on exit
                 logger.info(f"Created new page target: {target_id}")
 
         # Attach to target to obtain CDP session ID
@@ -191,8 +190,8 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
         """Cleanup CDP connection and close created page targets."""
         logger.info("Cleaning up BrowserUseToolset context")
 
-        # Close page target if we created one (not reused)
-        if self._created_target_id and self._cdp_client:
+        # Close page target if we created one (not reused) and auto_cleanup_page is enabled
+        if self._created_target_id and self._cdp_client and self.auto_cleanup_page:
             try:
                 logger.info(f"Closing created page target: {self._created_target_id}")
                 await self._cdp_client.send.Target.closeTarget(params={"targetId": self._created_target_id})
@@ -201,6 +200,8 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
                 logger.warning(f"Failed to close page target {self._created_target_id}: {e}")
             finally:
                 self._created_target_id = None
+        elif self._created_target_id and not self.auto_cleanup_page:
+            logger.info(f"Skipping cleanup for created page target {self._created_target_id} (auto_cleanup_page=False)")
 
         # Close CDP client connection
         if self._cdp_client:
