@@ -55,20 +55,24 @@ google-chrome --remote-debugging-port=9222
 ### Basic Usage
 
 ```python
-import os
+import asyncio
 from pydantic_ai import Agent
 from pai_browser_use import BrowserUseToolset
 
-agent = Agent(
-    model="anthropic:claude-sonnet-4-5",
-    system_prompt="You are a helpful assistant.",
-    toolsets=[
-        BrowserUseToolset(cdp_url="http://localhost:9222/json/version"),
-    ],
-)
+async def main():
+    agent = Agent(
+        model="openai:gpt-5",
+        system_prompt="You are a helpful assistant.",
+        toolsets=[
+            BrowserUseToolset(cdp_url="http://localhost:9222/json/version"),
+        ],
+    )
 
-result = await agent.run("Find the number of stars of the wh1isper/pai-browser-use repo")
-print(result.output)
+    result = await agent.run("Find the number of stars of the wh1isper/pai-browser-use repo")
+    print(result.output)
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 See [examples/agent.py](examples/agent.py) for a complete example.
