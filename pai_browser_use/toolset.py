@@ -10,6 +10,7 @@ from pydantic_ai import RunContext, Tool
 from pydantic_ai.toolsets import AbstractToolset, ToolsetTool
 from typing_extensions import TypeVar
 
+from pai_browser_use._config import BrowserUseSettings
 from pai_browser_use._logger import logger
 from pai_browser_use._session import BrowserSession
 from pai_browser_use._tools import build_tool
@@ -59,22 +60,34 @@ class BrowserUseToolset(AbstractToolset, Generic[AgentDepsT]):
     def __init__(
         self,
         cdp_url: str,
-        max_retries: int = 3,
+        max_retries: int | None = None,
         prefix: str | None = None,
-        always_use_new_page: bool = False,
+        always_use_new_page: bool | None = None,
     ) -> None:
         """Initialize the browser toolset.
 
         Args:
             cdp_url: CDP endpoint URL (HTTP or WebSocket).
-            max_retries: Max retry attempts for tool calls.
-            prefix: Tool name prefix (defaults to toolset ID).
-            always_use_new_page: Force create new page instead of reusing existing.
+            max_retries: Max retry attempts for tool calls. If None, loads from environment or defaults to 3.
+            prefix: Tool name prefix. If None, loads from environment or defaults to toolset ID.
+            always_use_new_page: Force create new page instead of reusing existing. If None, loads from environment or defaults to False.
         """
+        # Load settings from environment variables
+        settings = BrowserUseSettings()
+
         self.cdp_url = cdp_url
-        self.max_retries = max_retries
-        self.prefix = prefix or self.id
-        self.always_use_new_page = always_use_new_page
+        # Use parameter value if provided, otherwise fall back to settings, then to defaults
+        self.max_retries = (
+            max_retries
+            if max_retries is not None
+            else (settings.max_retries if settings.max_retries is not None else 3)
+        )
+        self.prefix = prefix if prefix is not None else (settings.prefix if settings.prefix is not None else self.id)
+        self.always_use_new_page = (
+            always_use_new_page
+            if always_use_new_page is not None
+            else (settings.always_use_new_page if settings.always_use_new_page is not None else False)
+        )
 
         # Internal state initialized during context entry
         self._cdp_client: CDPClient | None = None

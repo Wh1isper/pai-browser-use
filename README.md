@@ -73,6 +73,22 @@ print(result.output)
 
 See [examples/agent.py](examples/agent.py) for a complete example.
 
+## Configuration
+
+BrowserUseToolset supports configuration via environment variables. See [.env.example](.env.example) for all available options.
+
+You can override environment variables by passing explicit parameters:
+
+```python
+toolset = BrowserUseToolset(
+    cdp_url="http://localhost:9222/json/version",
+    max_retries=10,           # Override PAI_BROWSER_USE_MAX_RETRIES
+    prefix="custom_browser",   # Override PAI_BROWSER_USE_PREFIX
+)
+```
+
+**Priority**: Explicit parameters > Environment variables > Defaults
+
 ## Logging
 
 Use `PAI_BROWSER_USE_LOG_LEVEL` environment variable to set logging level. The default is `ERROR`. Set to `DEBUG` for more verbose logging.

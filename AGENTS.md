@@ -103,6 +103,45 @@ async def tool_function(param: type) -> dict | ToolReturn:
 1. **Direct CDP API Access**: Tools use `session.cdp_client.send.{Domain}.{method}()` directly to leverage full type hints and autocomplete from cdp-use library
 1. **Intelligent Wait Strategy**: Navigation tools use `asyncio.timeout` with `wait_for_load_state` for reliable page load detection instead of fixed `asyncio.sleep` delays
 
+## Documentation Philosophy: Self-Explaining First
+
+**Core Principle:** Code, configuration files, and docstrings are the documentation. Only create external docs when absolutely necessary.
+
+**Information Priority:**
+
+1. Code (types, naming, docstrings)
+1. Config files with comments (`.env.example`)
+1. Tests (as usage examples)
+1. README (quick start only)
+1. Separate docs (avoid if possible)
+
+**Before creating any documentation, ask:**
+
+- Can this be expressed in code? → Better naming/types/structure
+- Can this be a docstring? → Add it to the function/class
+- Is this a config option? → `.env.example` with comments
+- Is this showing usage? → Write a test
+- Does this need external context? → Only then use README/docs
+
+**DO NOT:**
+
+- ❌ Create separate doc files when inline comments suffice
+- ❌ Create example scripts when docstrings show usage
+- ❌ Duplicate information across multiple places
+
+## Configuration Management
+
+Uses `pydantic-settings`. Priority: Explicit params > Env vars > Defaults
+
+**Adding new config:**
+
+1. Add to `BrowserUseSettings` in `_config.py` with docstring
+1. Update `.env.example` with detailed comments (this IS the documentation)
+1. Update module to use setting: `param if param is not None else (settings.field if settings.field is not None else default)`
+1. Add tests
+
+**No separate config docs needed** - `.env.example` is sufficient
+
 ## Development Guidelines
 
 ### Code Quality Standards
@@ -172,6 +211,16 @@ make test            # Run pytest with coverage reporting
 make build           # Build wheel file for distribution
 make clean-build     # Clean build artifacts
 ```
+
+**Install packages:**
+
+Use `uv add` to add and install dependencies:
+
+```bash
+uv add {package_name}
+```
+
+This will automatically update `pyproject.toml` and install the package.
 
 **Running Commands Manually:**
 

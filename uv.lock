@@ -1339,6 +1339,7 @@ dependencies = [
     { name = "pillow" },
     { name = "pydantic" },
     { name = "pydantic-ai" },
+    { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "typing-extensions" },
 ]
@@ -1364,6 +1365,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=11.3.0" },
     { name = "pydantic", specifier = ">=2.11.9" },
     { name = "pydantic-ai", specifier = ">=1.0.10,<2.0.0" },
+    { name = "pydantic-settings", specifier = ">=2.10.1" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
