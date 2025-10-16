@@ -95,15 +95,15 @@ async def test_browser_use_toolset_always_use_new_page_true_initialization(cdp_u
 
 
 async def test_browser_use_toolset_closes_created_page_on_exit(cdp_url):
-    """Test that created page is closed when exiting context if always_use_new_page=True."""
+    """Test that created page is closed when both always_use_new_page=True and auto_cleanup_page=True."""
     # Get initial page count
     websocket_url = get_cdp_websocket_url(cdp_url)
     async with CDPClient(websocket_url) as client:
         targets_before = await client.send.Target.getTargets()
         page_count_before = sum(1 for t in targets_before.get("targetInfos", []) if t.get("type") == "page")
 
-        # Create toolset with always_use_new_page=True
-        toolset = BrowserUseToolset(cdp_url, always_use_new_page=True)
+        # Create toolset with always_use_new_page=True and auto_cleanup_page=True
+        toolset = BrowserUseToolset(cdp_url, always_use_new_page=True, auto_cleanup_page=True)
         created_target_id = None
 
         async with toolset as ts:
@@ -144,6 +144,30 @@ async def test_browser_use_toolset_does_not_close_reused_page_on_exit(cdp_url):
         targets_after = await client.send.Target.getTargets()
         page_count_after = sum(1 for t in targets_after.get("targetInfos", []) if t.get("type") == "page")
         assert page_count_after == page_count_before
+
+
+async def test_browser_use_toolset_created_page_without_cleanup(cdp_url):
+    """Test that created page is NOT closed when auto_cleanup_page=False (default)."""
+    websocket_url = get_cdp_websocket_url(cdp_url)
+    async with CDPClient(websocket_url) as client:
+        targets_before = await client.send.Target.getTargets()
+        page_count_before = sum(1 for t in targets_before.get("targetInfos", []) if t.get("type") == "page")
+
+        # Create toolset with always_use_new_page=True, auto_cleanup_page defaults to False
+        toolset = BrowserUseToolset(cdp_url, always_use_new_page=True)
+        created_target_id = None
+
+        async with toolset as ts:
+            created_target_id = ts._created_target_id
+            assert created_target_id is not None
+
+        # Page should still exist after exit
+        targets_after = await client.send.Target.getTargets()
+        page_count_after = sum(1 for t in targets_after.get("targetInfos", []) if t.get("type") == "page")
+        assert page_count_after == page_count_before + 1
+
+        # Clean up manually
+        await client.send.Target.closeTarget(params={"targetId": created_target_id})
 
 
 def test_browser_use_toolset_default_prefix():

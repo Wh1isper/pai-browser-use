@@ -19,11 +19,18 @@ class BrowserUseSettings(BaseSettings):
         extra="ignore",
     )
 
-    max_retries: int | None = None
-    """Maximum retry attempts for tool calls. Defaults to None (no retry limit set by config)."""
+    max_retries: int = 3
+    """Maximum retry attempts for tool calls. Defaults to 3."""
 
     prefix: str | None = None
-    """Tool name prefix. Defaults to None (will use toolset ID)."""
+    """Tool name prefix. Defaults to None."""
 
-    always_use_new_page: bool | None = None
-    """Force create new page instead of reusing existing. Defaults to None (will use False)."""
+    always_use_new_page: bool = False
+    """Force create new page instead of reusing existing. Defaults to False."""
+
+    auto_cleanup_page: bool = False
+    """Automatically close created page targets on context exit. Defaults to False.
+
+    Can be combined with always_use_new_page=True to create new pages and automatically clean them up.
+    When False (default), created pages remain open after context exit, useful for debugging or inspection.
+    """

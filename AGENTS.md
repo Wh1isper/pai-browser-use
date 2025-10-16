@@ -133,11 +133,25 @@ async def tool_function(param: type) -> dict | ToolReturn:
 
 Uses `pydantic-settings`. Priority: Explicit params > Env vars > Defaults
 
+**Available Configuration Options:**
+
+- `max_retries`: Maximum retry attempts for tool calls (default: 3)
+- `prefix`: Tool name prefix (default: None, toolset falls back to "browser_use")
+- `always_use_new_page`: Force create new page instead of reusing existing (default: False)
+- `auto_cleanup_page`: Automatically close created page targets on context exit (default: False). Can be combined with `always_use_new_page=True` to create and auto-cleanup new pages
+
+**Page Cleanup Behavior:**
+
+- When `always_use_new_page=True`: Creates a new page and tracks it for potential cleanup
+- When `always_use_new_page=False` but no existing page is found: Creates a new page and tracks it for potential cleanup
+- When reusing an existing page: No tracking, cleanup is never attempted (preserves existing pages)
+- Cleanup only occurs if `auto_cleanup_page=True` AND the page was created (not reused)
+
 **Adding new config:**
 
-1. Add to `BrowserUseSettings` in `_config.py` with docstring
+1. Add to `BrowserUseSettings` in `_config.py` with docstring and concrete default value (use `bool`, `int`, `str`, not `None`)
 1. Update `.env.example` with detailed comments (this IS the documentation)
-1. Update module to use setting: `param if param is not None else (settings.field if settings.field is not None else default)`
+1. Update module to use setting: `param if param is not None else settings.field`
 1. Add tests
 
 **No separate config docs needed** - `.env.example` is sufficient

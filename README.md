@@ -82,12 +82,40 @@ You can override environment variables by passing explicit parameters:
 ```python
 toolset = BrowserUseToolset(
     cdp_url="http://localhost:9222/json/version",
-    max_retries=10,           # Override PAI_BROWSER_USE_MAX_RETRIES
-    prefix="custom_browser",   # Override PAI_BROWSER_USE_PREFIX
+    max_retries=10,              # Override PAI_BROWSER_USE_MAX_RETRIES
+    prefix="custom_browser",     # Override PAI_BROWSER_USE_PREFIX
+    always_use_new_page=True,    # Override PAI_BROWSER_USE_ALWAYS_USE_NEW_PAGE
+    auto_cleanup_page=False,     # Override PAI_BROWSER_USE_AUTO_CLEANUP_PAGE
 )
 ```
 
 **Priority**: Explicit parameters > Environment variables > Defaults
+
+### Page Management
+
+- **`always_use_new_page`**: When `True`, creates a new browser page instead of reusing existing ones. Defaults to `False`.
+- **`auto_cleanup_page`**: When `True`, automatically closes created pages on context exit. Defaults to `False`.
+
+**Use Case Examples:**
+
+```python
+# Default behavior: Reuse existing page, no cleanup needed
+toolset = BrowserUseToolset(cdp_url="http://localhost:9222/json/version")
+
+# Create new page but keep it open for debugging/inspection (default when using always_use_new_page)
+toolset = BrowserUseToolset(
+    cdp_url="http://localhost:9222/json/version",
+    always_use_new_page=True,   # Create fresh page
+    # auto_cleanup_page defaults to False - page remains open
+)
+
+# Create new page and automatically clean up (for production/batch processing)
+toolset = BrowserUseToolset(
+    cdp_url="http://localhost:9222/json/version",
+    always_use_new_page=True,   # Create fresh page
+    auto_cleanup_page=True,     # Clean up after execution
+)
+```
 
 ## Logging
 
